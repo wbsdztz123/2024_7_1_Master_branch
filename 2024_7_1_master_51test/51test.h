@@ -1,6 +1,6 @@
 #ifndef _CODE_LOCK
 #define _CODE_LOCK
-
+#include <reg52.h>
 #include "tool.h"
 
 typedef unsigned char uint8_t;

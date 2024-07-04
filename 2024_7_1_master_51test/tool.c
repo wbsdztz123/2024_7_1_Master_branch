@@ -102,7 +102,7 @@ void uart_print(const uint8_t *format, ...)
 void delay_ms(uint16_t ms)
 {
     uint16_t i,j;
-    for(i = ms,i > 0; i--)
+    for(i = ms;i > 0; i--)
     {
         for(j = 110; j > 0 ; j--);
     }
