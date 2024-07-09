@@ -107,8 +107,116 @@ void delay_ms(uint16_t ms)
         for(j = 110; j > 0 ; j--);
     }
 }
+
+void delay_10us(uint16_t us)
+{
+    while (us--)
+}
 #endif
 
 #ifdef EPPROM_FUNC
+/* 函数名: I2C起始信号产生
+ * 描述：I2C产生起始信号  时钟线SCL处于高电平时，SDA数据线从高电平切换到低电频
+ * 返回值：NA
+ */
+void I2C_start()
+{
+    IIC_SDA = 1;
+    delay_10us(1);
+    IIC_SCL = 1;
+    delay_10us(1);
+    IIC_SDA = 0;  //当SCL为高电平时，SDA由高变为低   起始信号产生
+    delay_10us(1);
+    IIC_SCL = 0;  //钳住I2C,为接下来的数据传输或其他操作做好准备。
+}
+
+/* 函数名: I2C 停止信号产生
+ * 描述：I2C 产生停止信号。
+ * 返回值：NA
+ */
+void I2C_stop()
+{
+    IIC_SDA = 0;
+    delay_10us(1);
+    IIC_SCL = 1;
+    delay_10us(1);
+    IIC_SDA = 1;
+}
+/* 函数名: I2C_Write_onebyte(uint8_t data)
+ * 描述：传输一个字节的数据   0xA0 = 1010 0000 1010 000  设备地址  0写操作
+ * 返回值：NA
+ */
+void I2C_Write_onebyte(uint8_t data)
+{
+    uint8_t i = 0;
+    IIC_SCL = 0;
+    for(i = 0;i < 8;i++)
+    {
+        if((data&0x80) > 0)
+        {
+            IIC_SDA = 1;
+        }
+        else
+        {
+            IIC_SDA = 0;
+        }
+        data<<=1; //左移1位
+        delay_10us(10);
+        IIC_SCL = 1;   //通知接受数据
+        delay_10us(10);
+        IIC_SCL = 0;
+        delay_10us(10);
+    }
+}
+
+/* 函数名: void I2C_ack(void)
+ * 描述：I2C_应答信号
+ * 返回值：NA
+ */
+void I2C_ack(void)
+{
+	IIC_SCL=0;
+	IIC_SDA=0;	//SDA为低电平   成功接受数据  SDA为高电平形成NACK信号
+	delay_10us(1);
+   	IIC_SCL=1; //读取数据线的状态  SDA为低电平ACK 高电频NACK
+	delay_10us(1);
+	IIC_SCL=0;  
+}
+/* 函数名: void I2C_Nack(void)
+ * 描述：I2C_非应答信号
+ * 返回值：NA
+ */
+void I2C_Nack(void)
+{
+	IIC_SCL=0;
+	IIC_SDA=1;	//SDA为低电平   成功接受数据  SDA为高电平形成NACK信号
+	delay_10us(1);
+   	IIC_SCL=1; //读取数据线的状态  SDA为低电平ACK 高电频NACK
+	delay_10us(1);
+	IIC_SCL=0;  
+}
+
+
+
+/* 函数名: Write_EPPROM(uint8_t address, uint8_t data)
+ * 描述：EPPROM写入函数，起始地址0x00，终止地址0xFF  单次写入一个byte 
+ * 容量：255个byte
+ * 返回值：NA
+ */
+void Write_EPPROM(uint8_t address, uint8_t data)
+{
+
+}
+
+/* 函数名: Read_EPPROM(uint8_t address, uint8_t data)
+ * 描述：EPPROM读取函数，起始地址0x00，终止地址0xFF  单次读取一个byte 
+ * 容量：255个byte
+ * 返回值：NA
+ */
+void Read_EPPROM(uint8_t address, uint8_t data)
+{
+
+}
+
 
 #endif
