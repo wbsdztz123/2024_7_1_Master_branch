@@ -143,7 +143,7 @@ void I2C_stop()
     IIC_SDA = 1;
 }
 /* 函数名: I2C_Write_onebyte(uint8_t data)
- * 描述：传输一个字节的数据   0xA0 = 1010 0000 1010 000  设备地址  0写操作
+ * 描述：读取一个字节的数据   0xA0 = 1010 0000 1010 000  设备地址  0写操作
  * 返回值：NA
  */
 void I2C_Write_onebyte(uint8_t data)
@@ -168,12 +168,43 @@ void I2C_Write_onebyte(uint8_t data)
         delay_10us(10);
     }
 }
+/* 函数名: I2C_Read_onebyte(uint8_t Ack)
+ * 描述：读取一个字节的数据   0xA0 = 1010 0000 1010 000  设备地址  0写操作
+          ack == 1
+         return ACK
+         else
+         return NACK
+ * 返回值：receive
+ */
+uint8_t I2C_Read_onebyte(uint8_t ack)
+{
+    uint8_t i = 0,receive = 0;
+    for (i = 0; i < 8; i++)
+    {
+        IIC_SCL = 0;
+        delay_10us(1);
+        IIC_SCL = 1;
+        receive <<= 1;
+        if(IIC_SDA)
+        {
+            receive++;
+        }
+    }
+    if (ack)
+    {
+        I2C_ack();
+    }else{
+        I2C_NACK();
+    }
+    return receive;
+}
+
 
 /* 函数名: void I2C_ack(void)
  * 描述：I2C_应答信号
  * 返回值：NA
  */
-void I2C_ack(void)
+void I2C_Ack(void)
 {
 	IIC_SCL=0;
 	IIC_SDA=0;	//SDA为低电平   成功接受数据  SDA为高电平形成NACK信号
@@ -183,7 +214,7 @@ void I2C_ack(void)
 	IIC_SCL=0;  
 }
 /* 函数名: void I2C_Nack(void)
- * 描述：I2C_非应答信号
+ * 描述：I2C_非应答信号产生
  * 返回值：NA
  */
 void I2C_Nack(void)
@@ -196,6 +227,32 @@ void I2C_Nack(void)
 	IIC_SCL=0;  
 }
 
+/* 函数名: void I2C_Nack(void)
+ * 描述：I2C等待应答信号
+ * 返回值：NA
+ */
+
+#define I2C_STOP 1
+#define I2C_SUCCESS 0
+uint8_t I2C_Wait_ack(void)
+{
+    uint8_t time = 0;
+    IIC_SCL = 1;
+    delay_10us(1);
+    while (IIC_SDA)  //1-0
+    {
+        time++;
+        if(time > 100)
+        {
+            I2C_stop();
+            return I2C_STOP;
+        }
+    }
+    IIC_SCL = 0;
+    return I2C_SUCCESS;
+    
+
+}
 
 
 /* 函数名: Write_EPPROM(uint8_t address, uint8_t data)
