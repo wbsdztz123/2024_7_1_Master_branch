@@ -41,7 +41,9 @@ typedef float float32_t;
 
 typedef enum {
     CALIBRATION_INIT = 0x00,
-    CALIBRATION_RUNING = 0x01
+    CALIBRATION_RUNING,
+    DATA_READ_EXIT,
+    CALIBRATION_EXIT
 } CALIBRATION_MODE;
 
 
