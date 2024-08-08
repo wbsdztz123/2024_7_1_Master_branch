@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/zhujunnan/Desktop/MuGITHUB/2024_7_1_master_51test/Chery_Adaptive_simulation",
-      "program": "c:/Users/zhujunnan/Desktop/MuGITHUB/2024_7_1_master_51test/Chery_Adaptive_simulation/build/Debug/outDebug",
+      "cwd": "c:/Users/zhujunnan/Desktop/MuGITHUB/2024_7_1_master_51test/QX_Adaptive_simulation",
+      "program": "c:/Users/zhujunnan/Desktop/MuGITHUB/2024_7_1_master_51test/QX_Adaptive_simulation/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

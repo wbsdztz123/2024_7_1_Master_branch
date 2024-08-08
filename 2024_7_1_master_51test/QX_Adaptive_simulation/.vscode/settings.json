@@ -57,7 +57,10 @@
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
+    "adaptive.h": "c",
+    "qx_adaptive.h": "c",
+    "string.h": "c",
     "stdlib.h": "c",
-    "adaptive.h": "c"
+    "semaphore.h": "c"
   }
 }
