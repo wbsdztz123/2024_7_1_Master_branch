@@ -369,7 +369,7 @@ printf("flag: %d\n",flag);
                 {
                     CalibrationPara.Start = 1;
                     CalibrationPara.SteeringAngle = Message_VehicleMsg.SteeringAngle; // 存储标定开始的方向盘转角
-                    CalibrationPara.Velocity = (Message_VehicleMsg.Velocity / 3.6f); // 存储标定开始的车速
+                    CalibrationPara.Velocity = (Message_VehicleMsg.Velocity); // 存储标定开始的车速
 
 
 #ifdef _CALIBRATION_DEBUG_
@@ -435,7 +435,7 @@ printf("flag: %d\n",flag);
         {
             if ((fabs(Message_VehicleMsg.SteeringAngle - CalibrationPara.SteeringAngle)
                  < 3.0f) //5//6//10// 方向盘转角偏差小于10才行。
-                && (fabs((Message_VehicleMsg.Velocity / 3.6f) - CalibrationPara.Velocity) < 3.0f)) // 3
+                && (fabs((Message_VehicleMsg.Velocity) - CalibrationPara.Velocity) < 3.0f)) // 3
             {
                 Start_num = 0;
                 for (i = 0; i < point_count ;i++) {
@@ -517,7 +517,7 @@ printf("flag: %d\n",flag);
                 if (fabs(Message_VehicleMsg.SteeringAngle - CalibrationPara.SteeringAngle) > 10.0f) //横摆角速度过大
                 {
                     CalibrationPara.Driving_Profile = 0x04;
-                } else if (fabs((Message_VehicleMsg.Velocity / 3.6f) - CalibrationPara.Velocity)
+                } else if (fabs((Message_VehicleMsg.Velocity) - CalibrationPara.Velocity)
                            > 3.0f) //纵向加速度过大
                 {
                     CalibrationPara.Driving_Profile = 0x08;
@@ -658,7 +658,7 @@ uint8_t Rang_judge(uint32_t point_count,GTRACK_measurementPoint *PeakList)
 uint8_t Body_Posture_Detection(void)
 {
     uint8_t result = 0;
-    float velocity = Message_VehicleMsg.Velocity / 3.6f;
+    float velocity = Message_VehicleMsg.Velocity;
     float steeringAngle = fabs(Message_VehicleMsg.SteeringAngle);
     float curveRadius = fabs(Message_VehicleMsg.CurveRadius);
     float yawRate = fabs(Message_VehicleMsg.YawRate);
@@ -732,7 +732,7 @@ uint8_t CAL_Target_Filtering(GTRACK_measurementPoint *PeakList,uint8_t i)
            // printf("rang[%d] = %f, doppler[%d] = %f, azimuth[%d] = %f, snr[%d] = %f\n",i,PeakList[i].vector.range,i,PeakList[i].vector.doppler,i,PeakList[i].vector.azimuth,i,PeakList[i].snr);
             
             float32_t cosValue = cos((RadarPara.InstallAngle + (PeakList[i].vector.azimuth * 180 / PI)) * PI / 180);
-            float32_t speed = Message_VehicleMsg.Velocity / 3.6f;
+            float32_t speed = Message_VehicleMsg.Velocity;
            // printf("speed = %f\n",speed);
             float32_t threshold = 0.15f;
 

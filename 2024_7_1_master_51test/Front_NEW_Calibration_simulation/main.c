@@ -1,14 +1,12 @@
-#include "QX_Adaptive.h"
+#include "Adaptive.h"
 #include <pthread.h>
 #include "main.h"
 #include <semaphore.h>
-
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 Calibration_Date Calibration_Message = {0};
 extern  CalibrationParaS CalibrationPara;
 extern  Message_VehicleMsgS Message_VehicleMsg;
 extern  RadarParaS RadarPara;
-extern  GTRACK_measurementPoint Peakpoint[GTRACK_NUM_POINTS_MAX] ;
 CALIBRATION_MODE CAL_MODE = CALIBRATION_INIT;
 const char *Split_symbol = ",";
 #define ang_to_rad  PI/180.0f
@@ -17,15 +15,16 @@ const char *Split_symbol = ",";
 #define Serial_number 1
 #define Range  2
 #define Doppler  3
-#define Snr  4
-#define Azimuth  7
-#define Vel  10
-#define Yaw 13
-#define Steering 14
-#define Cur 15
+#define Azimuth  4
+#define Snr  7
 
-#define LIST_NUM  15
-#define line_NUM  200
+#define Vel  11
+#define Yaw 14
+#define Steering 15
+#define Cur 16
+
+#define LIST_NUM  18//15   //只读取列数前18列
+#define line_NUM  300      //只读取行数
 
 sem_t semaphore,semaphore1;
 
@@ -37,25 +36,15 @@ void Data_Writing(float Data,int list,char *Title)
 void Calibration_Required_data()
 {
     /*********Message_VehicleMsgS********/
-//     //Calibration_Message.Message_VehicleMsgS.Velocity = 25.0f;
-//     Calibration_Message.Message_VehicleMsgS.YawRate  = 0.3f;
-//     Calibration_Message.Message_VehicleMsgS.SteeringAngle = 1.0f;
-//     Calibration_Message.Message_VehicleMsgS.CurveRadius = 400.0f;
-//     /*********Message_VehicleMsgS********/
-//     Calibration_Message.RadarParaS.InstallAngle = 0.0f;
-//     //memcpy(&CalibrationPara,&Calibration_Message.CalibrationParaS,sizeof(CalibrationPara));
-//     memcpy(&Message_VehicleMsg,&Calibration_Message.Message_VehicleMsgS,sizeof(Message_VehicleMsg));
-//     memcpy(&RadarPara,&Calibration_Message.RadarParaS,sizeof(RadarPara));
-        //RadarPara.InstallAngle = RadarInstallAngle;
-        RadarPara.InstallPosition = INSTALL_LEFT_BACK;
-
-        for(int i = 0;i < Calibration_Message.or_point_cloud_format_t.point_count;i++)
-        {
-            Peakpoint[i].vector.azimuth = Calibration_Message.or_point_cloud_format_t.term[i].azimuth;
-            Peakpoint[i].vector.range = Calibration_Message.or_point_cloud_format_t.term[i].range;
-            Peakpoint[i].vector.doppler = Calibration_Message.or_point_cloud_format_t.term[i].doppler;
-            Peakpoint[i].snr = Calibration_Message.or_point_cloud_format_t.term[i].snr;
-        }
+    //Calibration_Message.Message_VehicleMsgS.Velocity = 25.0f;
+    // Calibration_Message.Message_VehicleMsgS.YawRate  = 0.3f;
+    // Calibration_Message.Message_VehicleMsgS.SteeringAngle = 1.0f;
+    // Calibration_Message.Message_VehicleMsgS.CurveRadius = 400.0f;
+    /*********Message_VehicleMsgS********/
+    Calibration_Message.RadarParaS.InstallAngle = 0.0f;
+    //memcpy(&CalibrationPara,&Calibration_Message.CalibrationParaS,sizeof(CalibrationPara));
+    //memcpy(&Message_VehicleMsg,&Calibration_Message.Message_VehicleMsgS,sizeof(Message_VehicleMsg));
+    memcpy(&RadarPara,&Calibration_Message.RadarParaS,sizeof(RadarPara));
 }
 
 void FILE_Read(void)
@@ -117,19 +106,16 @@ void FILE_Read(void)
                         if(atoi(token) != 0)
                         {
                             point_id = atoi(token);
-
                         }
                     }
-    
                     switch (list)
-                    {
+                    {   
+                        
                         case Frame_number:
                             if(frame_num_temp != atoi(token))
                             {
                                 frame_num_temp = atoi(token);
-                                printf("frame_num_temp = %d\n",frame_num_temp);
                                 Calibration_Message.or_point_cloud_format_t.point_count = point_id + 1;
-
                                 point_id = 0;
                                 //speed_temp = 0.0f;
                                 //printf("Release semaphore\n");
@@ -144,30 +130,31 @@ void FILE_Read(void)
                         break;
                         case Doppler:
                             Calibration_Message.or_point_cloud_format_t.term[point_id].doppler = (float)atof(token);
-                        /*****************Simulated speed******************/
-                            // speed_temp += (float)atof(token);
-                            // Calibration_Message.Message_VehicleMsgS.Velocity = fabs((speed_temp/point_id)*3.6f)+6.0f;
-                        /*****************Simulated speed******************/
+                        // /*****************Simulated speed******************/
+                        //     speed_temp += (float)atof(token);
+                        //     Calibration_Message.Message_VehicleMsgS.Velocity = fabs((speed_temp/point_id)*3.6f)+6.0f;
+                        // /*****************Simulated speed******************/
                         break;
                         case Azimuth:
-                            Calibration_Message.or_point_cloud_format_t.term[point_id].azimuth = ((float)atof(token))*ang_to_rad;//
+                            Calibration_Message.or_point_cloud_format_t.term[point_id].azimuth = ((float)atof(token))*ang_to_rad;
                         break;
                         case Snr:
                             Calibration_Message.or_point_cloud_format_t.term[point_id].snr = (float)atof(token);
-                            //printf("SNR: %f\n", (float)atof(token));
-                            //sleep(1);
                         break;
                         case Vel:
-                            Message_VehicleMsg.Velocity = (float)atof(token);
+                            Message_VehicleMsg.Velocity = (float)atof(token);  //车速
+                            //printf("Message_VehicleMsg.Velocity = %f\n",Message_VehicleMsg.Velocity);
                         break;
                         case Yaw:
-                            Message_VehicleMsg.YawRate = (float)atof(token);
+                            Message_VehicleMsg.YawRate = (float)atof(token);  //横摆角
+                            //printf("Message_VehicleMsg.YawRate = %f\n",Message_VehicleMsg.YawRate);
                         break;
                         case Steering:
-                            Message_VehicleMsg.SteeringAngle = (float)atof(token);
+                            Message_VehicleMsg.SteeringAngle = (float)atof(token);  //方向盘转角
+                            //printf("Message_VehicleMsg.SteeringAngle = %f\n",Message_VehicleMsg.SteeringAngle);
                         break;
                         case Cur:
-                            Message_VehicleMsg.CurveRadius = (float)atof(token);
+                            Message_VehicleMsg.CurveRadius = (float)atof(token);   //转弯半径
                         break;
                     }
                     token = strtok(NULL, Split_symbol);
@@ -196,25 +183,19 @@ void Calibration_runing_task(void)
 {
     while (1)
     {
-       // printf("CAL_MODE = %d\n",CAL_MODE); //wait for the semaphore
-         sem_wait(&semaphore1); //wait for the semaphore
-        //printf("point_count = %d\n",Calibration_Message.or_point_cloud_format_t.point_count);
+        sem_wait(&semaphore1); //wait for the semaphore
         Calibration_Required_data();
+        //printf("point_count = %d\n",Calibration_Message.or_point_cloud_format_t.point_count);
         // for(int i = 0; i < Calibration_Message.or_point_cloud_format_t.point_count ; i++)
-        //     printf("rang[%d] = %f, doppler[%d] = %f, azimuth[%d] = %f, snr[%d] = %f\n",i,Peakpoint[i].vector.range,i,Peakpoint[i].vector.doppler,i,Peakpoint[i].vector.azimuth,i,Peakpoint[i].snr);
-        //     printf("Message_VehicleMsg.Velocity = %f,Message_VehicleMsg.YawRate = %f,Message_VehicleMsg.SteeringAngle = %f\n",Message_VehicleMsg.Velocity,Message_VehicleMsg.YawRate,Message_VehicleMsg.SteeringAngle);
-        //     sleep(1);
+        //     printf("rang[%d] = %f, doppler[%d] = %f, azimuth[%d] = %f, snr[%d] = %f\n",i,Calibration_Message.or_point_cloud_format_t.term[i].range,i,Calibration_Message.or_point_cloud_format_t.term[i].doppler,i,Calibration_Message.or_point_cloud_format_t.term[i].azimuth,i,Calibration_Message.or_point_cloud_format_t.term[i].snr);
+
             switch(CAL_MODE)
             {
                 case CALIBRATION_INIT:
-                    //Adaptive_CalibrationInit();
                     AdaptiveCalStart();
                     break;
                 case CALIBRATION_RUNING:
-                printf("CALIBRATION_RUNING\n");
-                //usleep(1000000);
-                    Calibration_Required_data();
-                    Adaptive_Calibration(Calibration_Message.or_point_cloud_format_t.point_count,Peakpoint);
+                    Adaptive_Calibration(&Calibration_Message.or_point_cloud_format_t);
                 break;
                 default:
     
@@ -233,6 +214,7 @@ void Calibration_runing_task(void)
                 }
                 return;
             }
+
             sem_post(&semaphore);
         
     }
@@ -255,15 +237,4 @@ void main(int argc, char**argv)
     
     pthread_join(Data_reading_thread, NULL);  
     pthread_join(Calibration_thread, NULL);  
-
-    if (sem_destroy(&semaphore) != 0) {
-    perror("sem_destroy");
-    exit(EXIT_FAILURE);
-    }
-    if (sem_destroy(&semaphore1) != 0) {
-    perror("sem_destroy");
-    exit(EXIT_FAILURE);
-    }
-
-    //graphics();
 }
