@@ -152,7 +152,7 @@ void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
     Calibration_Progress(tempProgress);
 
     printf("poind_count = %d\n",PeakList->point_count);
-sleep(1);
+//sleep(1);
     if (flag) // 车辆处于可以标定的状态，进行标定
     {
         CalibrationPara.Error_Number = 0; // 车速、档位、转弯正确，则时间清零。

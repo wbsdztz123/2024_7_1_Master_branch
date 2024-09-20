@@ -78,8 +78,6 @@ void Adaptive_CalibrationClear(void)
         CalibrationPara.Adap_A = 0;
         CalibrationPara.Adap_B = 0;
         CalibrationPara.Error_Number = 0;
-        
-
         CalibrationPara.TEMP_PB = 0;  //标定进度清零
 
         for (i = 0; i < CalibrationTime*Timeframe; i++)
@@ -91,19 +89,16 @@ void Adaptive_CalibrationClear(void)
     
         CalibrationPara.errType =0;
         CalibrationPara.Driving_Profile = 0;
-
-
 }
 
 
 void Adaptive_Calibration(const or_point_cloud_format_t *PeakList)
 {
-
-        uint8_t tempProgress;
-        float32_t i;
-        uint8_t subscript;
-        float32_t ang;
-        uint8_t  j;
+    uint8_t tempProgress;
+    float32_t i;
+    uint8_t subscript;
+    float32_t ang;
+    uint8_t  j;
     if(CalibrationPara.DataNum < POINT_THRESHOLD)  //数据量2000
     {
         Adaptive_CalibrationSaveData(PeakList); // 保存数据
@@ -122,8 +117,9 @@ void Adaptive_Calibration(const or_point_cloud_format_t *PeakList)
             {
                 CalibrationPara.Ang_SSE[CalibrationPara.SSE_subscript] += CALGet_SSE(ang,i);
             }
+            printf("CalibrationPara.Ang_SSE[%d] = %f\n",CalibrationPara.SSE_subscript,CalibrationPara.Ang_SSE[CalibrationPara.SSE_subscript]);
             CalibrationPara.SSE_subscript++;
-
+            
             tempProgress += CalibrationPara.SSE_subscript * 2;
             Calibration_Progress(tempProgress);
         }else{
@@ -151,9 +147,9 @@ void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
     tempProgress += 2;
     Calibration_Progress(tempProgress);
 
-    printf("poind_count = %d\n",PeakList->point_count);
+    //printf("poind_count = %d\n",PeakList->point_count);
 
-    sleep(1);
+    //sleep(1);
        if (flag) // 车辆处于可以标定的状态，进行标定
     {
         tempProgress = 5;
@@ -169,10 +165,10 @@ void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
 
                 if (Calibration_flag) 
                 {
+                    printf("ang = %f,dopplor = %f,rang = %f,VehicleMsg_Vel = %f\n",PeakList->term[i].azimuth*180/PI,PeakList->term[i].doppler,PeakList->term[i].range,Message_VehicleMsg.Velocity/3.6f);
                     CALSaved_Sample_Parameters(PeakList, i);//保存静止点
                 }
             }
-           
         }
     }
 }
@@ -257,7 +253,7 @@ uint8_t Rang_judge(const or_point_cloud_format_t *PeakList)
 
 uint8_t Body_Posture_Detection(void)
 {
-    printf("Message_VehicleMsg.Velocity = %f\n",Message_VehicleMsg.Velocity);
+    //printf("Message_VehicleMsg.Velocity = %f\n",Message_VehicleMsg.Velocity);
     uint8_t result = 0;
     float velocity = Message_VehicleMsg.Velocity / 3.6f;
     float steeringAngle = fabs(Message_VehicleMsg.SteeringAngle);
@@ -268,7 +264,7 @@ uint8_t Body_Posture_Detection(void)
              && (steeringAngle < Calibration_MaxSteeringAngle) 
              && (curveRadius > Calibration_MaxRoadCurve) 
              && (yawRate < 0.8f);
-    printf("result= %d\n",result);
+    //printf("result= %d\n",result);
     return result;
 }
 
@@ -324,7 +320,6 @@ uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint8_t i)
             Calibration_flag = (temp_speed_gap < speed * threshold);
         }
     }
-
     return Calibration_flag;
 }
 
@@ -332,50 +327,50 @@ void CALSaved_Sample_Parameters(const or_point_cloud_format_t *PeakList,uint8_t 
 {   
     float32_t peak_ANG = PeakList->term[i].azimuth * 180 / PI;
     if ((peak_ANG > -40.0f) && (peak_ANG < -30.0f)
-        && (CalibrationPara.count_minus_40_to_minus_30 < 20)) {
+        && (CalibrationPara.count_minus_40_to_minus_30 < 0)) {
         CalibrationPara.count_minus_40_to_minus_30++;
         //printf("CalibrationPara.count_minus_40_to_minus_30 = %d\n",CalibrationPara.count_minus_40_to_minus_30);
 
     } else if ((peak_ANG > -30.0f) && (peak_ANG < -20.0f)
-               && (CalibrationPara.count_minus_30_to_minus_20 < POINT_NUM2)) {
+               && (CalibrationPara.count_minus_30_to_minus_20 < 0)) {
         CalibrationPara.count_minus_30_to_minus_20++;
         //printf("CalibrationPara.count_minus_30_to_minus_20 = %d\n",CalibrationPara.count_minus_30_to_minus_20);
     } else if ((peak_ANG > -20.0f) && (peak_ANG < -10.0f)
-               && (CalibrationPara.count_minus_20_to_minus_10 < POINT_NUM1)) {
+               && (CalibrationPara.count_minus_20_to_minus_10 < 0)) {
         CalibrationPara.count_minus_20_to_minus_10++;
         //printf("CalibrationPara.count_minus_20_to_minus_10 = %d\n",CalibrationPara.count_minus_20_to_minus_10);
     } else if ((peak_ANG > -10.0f) && (peak_ANG < 0.0f)
-               && (CalibrationPara.count_minus_10_to_minus_0 < POINT_NUM1)) {
+               && (CalibrationPara.count_minus_10_to_minus_0 < 600)) {
         CalibrationPara.count_minus_10_to_minus_0++;
         //printf("CalibrationPara.count_minus_10_to_minus_0 = %d\n",CalibrationPara.count_minus_10_to_minus_0);
     } else if ((peak_ANG > 0.0f) && (peak_ANG < 10.0f)
-               && (CalibrationPara.count_0_to_10 < POINT_NUM2)) {
+               && (CalibrationPara.count_0_to_10 < 0)) {
         CalibrationPara.count_0_to_10++;
         //printf("CalibrationPara.count_0_to_10 = %d\n",CalibrationPara.count_0_to_10);
     } else if ((peak_ANG > 10.0f) && (peak_ANG < 20.0f)
-               && (CalibrationPara.count_10_to_20 < POINT_NUM1)) {
+               && (CalibrationPara.count_10_to_20 < 0)) {
         CalibrationPara.count_10_to_20++;
         //printf("CalibrationPara.count_10_to_20 = %d\n",CalibrationPara.count_10_to_20);
     } else if ((peak_ANG > 20.0f) && (peak_ANG < 30.0f)
-               && (CalibrationPara.count_20_to_30 < POINT_NUM1)) {
+               && (CalibrationPara.count_20_to_30 <0)) {
         CalibrationPara.count_20_to_30++;
         //printf("CalibrationPara.count_20_to_30 = %d\n",CalibrationPara.count_20_to_30);
     } else if ((peak_ANG > 30.0f) && (peak_ANG < 40.0f)
-               && (CalibrationPara.count_30_to_40 < POINT_NUM2)) {
+               && (CalibrationPara.count_30_to_40 < 0)) {
         CalibrationPara.count_30_to_40++;
         //printf("CalibrationPara.count_30_to_40 = %d\n",CalibrationPara.count_30_to_40);
     } else {
         return;
     }
-    printf("CalibrationPara.DataNum = %d\n",CalibrationPara.DataNum);
-    printf("CalibrationPara.count_minus_40_to_minus_30 = %d\n",CalibrationPara.count_minus_40_to_minus_30);
-    printf("CalibrationPara.count_minus_30_to_minus_20 = %d\n",CalibrationPara.count_minus_30_to_minus_20);
-    printf("CalibrationPara.count_minus_20_to_minus_10 = %d\n",CalibrationPara.count_minus_20_to_minus_10);
-    printf("CalibrationPara.count_minus_10_to_minus_0 = %d\n",CalibrationPara.count_minus_10_to_minus_0);
-    printf("CalibrationPara.count_0_to_10 = %d\n",CalibrationPara.count_0_to_10);
-    printf("CalibrationPara.count_10_to_20 = %d\n",CalibrationPara.count_10_to_20);
-    printf("CalibrationPara.count_20_to_30 = %d\n",CalibrationPara.count_20_to_30);
-    printf("CalibrationPara.count_30_to_40 = %d\n",CalibrationPara.count_30_to_40);
+    // printf("CalibrationPara.DataNum = %d\n",CalibrationPara.DataNum);
+    // printf("CalibrationPara.count_minus_40_to_minus_30 = %d\n",CalibrationPara.count_minus_40_to_minus_30);
+    // printf("CalibrationPara.count_minus_30_to_minus_20 = %d\n",CalibrationPara.count_minus_30_to_minus_20);
+    // printf("CalibrationPara.count_minus_20_to_minus_10 = %d\n",CalibrationPara.count_minus_20_to_minus_10);
+    // printf("CalibrationPara.count_minus_10_to_minus_0 = %d\n",CalibrationPara.count_minus_10_to_minus_0);
+    // printf("CalibrationPara.count_0_to_10 = %d\n",CalibrationPara.count_0_to_10);
+    // printf("CalibrationPara.count_10_to_20 = %d\n",CalibrationPara.count_10_to_20);
+    // printf("CalibrationPara.count_20_to_30 = %d\n",CalibrationPara.count_20_to_30);
+    // printf("CalibrationPara.count_30_to_40 = %d\n",CalibrationPara.count_30_to_40);
 
     CalibrationPara.Vradar[CalibrationPara.DataNum]    = PeakList->term[i].doppler;
     CalibrationPara.Vtarget[CalibrationPara.DataNum]   = (Message_VehicleMsg.Velocity / 3.6f);
@@ -393,9 +388,9 @@ float32_t CALGet_SSE(float32_t ang,uint8_t i)
 {
     float32_t v,tempang,result;
 
-    v = CalibrationPara.Vradar[i]/CalibrationPara.Vtarget[i];
-    tempang = cosf((CalibrationPara.Ang_radar[i] - (ang * PI/180.0)));
-    result = v - tempang;
+    v = CalibrationPara.Vradar[i]/CalibrationPara.Vtarget[i];//-1.014
+    tempang = cosf((CalibrationPara.Ang_radar[i] - (ang * PI/180.0)));//==cos(-11.68 -12.68 -13.68 -14.68 -15.68 -16.68 -17.68 -18.68 -19.68 -20.68 -21.68)
+    result = v - tempang;  //0.97929                        
 
     return result*result;
 }
@@ -434,12 +429,14 @@ void CAL_finsh(uint8_t i)
     tempProgress                         = 100;
     Calibration_Progress(tempProgress);
     CalibrationPara.Step = 3; // 标定完成
+    
     printf("/********************************This_is_result*******************************/\n");
     printf("/******************************************************************************/\n");
     printf("/*****************************TmpLinearAngle = %f****************************/\n",TmpLinearAngle);
     printf("/******************************************************************************/\n");
     printf("/******************************************************************************/\n");
     printf("/******************************************************************************/\n");
+
     CalibrationPara.Driving_Profile = 0x00;
     StatusArray[0]                  = 0x00;
     StatusArray[1]                  = 0x00;
@@ -453,7 +450,7 @@ void CAL_finsh(uint8_t i)
     if ((fabs(TmpLinearAngle) > 5.0f) || (fabs(RadarPara.FarVerticalAdptiveAngle) > 3.0f)) {
         StatusArray[0] = 0x00;
         StatusArray[1] = 0x02;
-        //Adaptive_Calibration_Exit(StatusArray);
+        // Adaptive_Calibration_Exit(StatusArray);
         // SetDtcCalOutOfRange_0x9ED546(TRUE);
         // SetDtcMissCal_0x9ED554(TRUE);
         CalibrationPara.Master_Result = 2; // 雷达标定结果为失败

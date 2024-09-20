@@ -15,6 +15,7 @@
 #define CalibrationTime       180       //一次标定的帧数，150代表150帧。
 #define Timeframe              10//7//20//20//7//8//7//7         //1帧数中有用的数据，5代表5个数据是有用数据。
 #define CalibrationRangeMin   8.0f//15//20//15//3//3    最小标定距离
+
 #define CalibrationRangeMid   30.0f     
 #define CalibrationRangeMax   65.0f//60.0f//40.0f//50.0f//40.0f//50//40//50//45//50//25//35//12//35       //最大标定距离35
 #define AdaptiveCalibration_OutputB       0      //自适应标定不输出B
@@ -41,7 +42,7 @@
 #define Formal_production_line  1
 #define Temporary_production_line  2
 #define Error_production_line 0  
-#define POINT_THRESHOLD  1520
+#define POINT_THRESHOLD  600
 #define TRAVERSE_START -5.0f
 #define TRAVERSE_END 5.0f
 #define TRAVERSE_INCREMEETS 0.5f
@@ -107,8 +108,6 @@ typedef struct TagCalibrationPara               //标定
     uint8_t      Step;                          //雷达标定的步骤
     uint8_t      Master_Result;                 //主雷达标定结果    0为未标定，1为标定成功，2为标定失败
     uint8_t      Error_Number;
-
-    
     /***************自适应标定参数**********************/
     uint8_t      Adaptive_step;                   //自适应标定步骤
     uint8_t      Start;                         //标定开始标志
@@ -131,8 +130,8 @@ typedef struct TagCalibrationPara               //标定
     uint8_t      SSE_subscript;
     float32_t    Xdata[CalibrationTime*Timeframe];    //x是纵向距离
     float32_t    Ydata[CalibrationTime*Timeframe];    //y是横向距离
-     float32_t    Vradar[POINT_THRESHOLD];
-    float32_t    Vtarget[POINT_THRESHOLD];
+     float32_t    Vradar[POINT_THRESHOLD];            //当前帧自车速度
+    float32_t    Vtarget[POINT_THRESHOLD];            //目标速度
     float32_t    Ang_radar[POINT_THRESHOLD];
     float32_t    Ang_target[POINT_THRESHOLD];
     float32_t    Ang_SSE[SSE_LEN + 1];
