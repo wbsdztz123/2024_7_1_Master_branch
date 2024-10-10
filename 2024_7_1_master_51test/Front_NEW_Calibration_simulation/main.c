@@ -10,6 +10,7 @@ extern  RadarParaS RadarPara;
 CALIBRATION_MODE CAL_MODE = CALIBRATION_INIT;
 const char *Split_symbol = ",";
 #define ang_to_rad  PI/180.0f
+#define Filter_Angle_Output_File_PATH "C:\\Users\\zhujunnan\\Desktop\\MuGITHUB\\2024_7_1_master_51test\\Filter_Angle_output.txt"
 
 #define Frame_number 0
 #define Serial_number 1
@@ -27,23 +28,60 @@ const char *Split_symbol = ",";
 #define line_NUM  300      //只读取行数
 
 sem_t semaphore,semaphore1;
-
-void Data_Writing(float Data,int list,char *Title)
+/* 函数名: void Output_file_clearing(char *output_filename)
+ * 描述：文件清空函数，用于在开始新的一轮数据读取前清空输出文件
+ * 返回值:NA
+ */
+void Output_file_clearing(char *output_filename)
 {
-    
+    if (truncate(output_filename, 0) == -1) 
+    {
+        perror("Error truncating file");
+        return ;
+    }
 }
+
+/* 函数名: Tag_write()
+ * 描述：标签写入函数，用于在输出文件中写入标签
+ * 返回值:NA
+ */
+
+void Tag_write()
+{
+    FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
+    if (NULL == output_fp)
+    {
+        perror("open_output_file error");
+        return;
+    }
+    fprintf(output_fp,"%s\t","YD");
+    fprintf(output_fp,"%s\n","XD");
+    fflush(output_fp);
+    fclose(output_fp);
+}
+
+void Calibration_Screening_Angle()
+{
+    Output_file_clearing(Filter_Angle_Output_File_PATH);
+    Tag_write();
+
+
+
+
+
+
+}
+
+
+
+
+
+
 
 void Calibration_Required_data()
 {
     /*********Message_VehicleMsgS********/
-    //Calibration_Message.Message_VehicleMsgS.Velocity = 25.0f;
-    // Calibration_Message.Message_VehicleMsgS.YawRate  = 0.3f;
-    // Calibration_Message.Message_VehicleMsgS.SteeringAngle = 1.0f;
-    // Calibration_Message.Message_VehicleMsgS.CurveRadius = 400.0f;
-    /*********Message_VehicleMsgS********/
     Calibration_Message.RadarParaS.InstallAngle = 0.0f;
-    //memcpy(&CalibrationPara,&Calibration_Message.CalibrationParaS,sizeof(CalibrationPara));
-    //memcpy(&Message_VehicleMsg,&Calibration_Message.Message_VehicleMsgS,sizeof(Message_VehicleMsg));
     memcpy(&RadarPara,&Calibration_Message.RadarParaS,sizeof(RadarPara));
 }
 
@@ -130,10 +168,6 @@ void FILE_Read(void)
                         break;
                         case Doppler:
                             Calibration_Message.or_point_cloud_format_t.term[point_id].doppler = (float)atof(token);
-                        // /*****************Simulated speed******************/
-                        //     speed_temp += (float)atof(token);
-                        //     Calibration_Message.Message_VehicleMsgS.Velocity = fabs((speed_temp/point_id)*3.6f)+6.0f;
-                        // /*****************Simulated speed******************/
                         break;
                         case Azimuth:
                             Calibration_Message.or_point_cloud_format_t.term[point_id].azimuth = ((float)atof(token))*ang_to_rad;
@@ -143,15 +177,12 @@ void FILE_Read(void)
                         break;
                         case Vel:
                             Message_VehicleMsg.Velocity = (float)atof(token);  //车速
-                            //printf("Message_VehicleMsg.Velocity = %f\n",Message_VehicleMsg.Velocity);
                         break;
                         case Yaw:
                             Message_VehicleMsg.YawRate = (float)atof(token);  //横摆角
-                            //printf("Message_VehicleMsg.YawRate = %f\n",Message_VehicleMsg.YawRate);
                         break;
                         case Steering:
                             Message_VehicleMsg.SteeringAngle = (float)atof(token);  //方向盘转角
-                            //printf("Message_VehicleMsg.SteeringAngle = %f\n",Message_VehicleMsg.SteeringAngle);
                         break;
                         case Cur:
                             Message_VehicleMsg.CurveRadius = (float)atof(token);   //转弯半径
@@ -185,10 +216,6 @@ void Calibration_runing_task(void)
     {
         sem_wait(&semaphore1); //wait for the semaphore
         Calibration_Required_data();
-        //printf("point_count = %d\n",Calibration_Message.or_point_cloud_format_t.point_count);
-        // for(int i = 0; i < Calibration_Message.or_point_cloud_format_t.point_count ; i++)
-        //     printf("rang[%d] = %f, doppler[%d] = %f, azimuth[%d] = %f, snr[%d] = %f\n",i,Calibration_Message.or_point_cloud_format_t.term[i].range,i,Calibration_Message.or_point_cloud_format_t.term[i].doppler,i,Calibration_Message.or_point_cloud_format_t.term[i].azimuth,i,Calibration_Message.or_point_cloud_format_t.term[i].snr);
-
             switch(CAL_MODE)
             {
                 case CALIBRATION_INIT:
