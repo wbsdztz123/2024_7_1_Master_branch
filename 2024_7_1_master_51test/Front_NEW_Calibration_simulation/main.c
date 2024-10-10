@@ -12,18 +12,18 @@ const char *Split_symbol = ",";
 #define ang_to_rad  PI/180.0f
 #define Filter_Angle_Output_File_PATH "C:\\Users\\zhujunnan\\Desktop\\MuGITHUB\\2024_7_1_master_51test\\Filter_Angle_output.txt"
 
-#define Frame_number 0
-#define Serial_number 1
+#define Frame_number 0    //帧ID
+#define Serial_number 1   //序列号
 #define Range  2
 #define Doppler  3
 #define Azimuth  4
 #define Snr  7
-
-#define Vel  11
-#define Yaw 14
-#define Steering 15
-#define Cur 16
-
+/*************车辆信息************/
+#define Vel  11      //车速
+#define Yaw 14       //横摆角
+#define Steering 15  //方向盘转角
+#define Cur 16       //转弯半径
+/*************车辆信息************/
 #define LIST_NUM  18//15   //只读取列数前18列
 #define line_NUM  300      //只读取行数
 
