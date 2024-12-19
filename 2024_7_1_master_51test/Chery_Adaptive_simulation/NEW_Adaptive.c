@@ -1,13 +1,5 @@
-
-/****************************************************************************
- *                        File: adaptive_calibration.c                      *
- *                        @sjw20210713                                           *
- ****************************************************************************/
-
-/* Includes ------------------------------------------------------------------*/
-
 #include "Adaptive.h"
-
+#include "NEW_Adaptive.h"
 CalibrationParaS CalibrationPara = {0};
 Message_VehicleMsgS Message_VehicleMsg = {0};
 RadarParaS RadarPara = {0};
@@ -109,23 +101,24 @@ void Adaptive_Calibration(const or_point_cloud_format_t *PeakList)
         //计算角度的SSE
         tempProgress = 55;
         Calibration_Progress(tempProgress);
+        
 
-        if(CalibrationPara.SSE_subscript < SSE_LEN)
-        {
-            ang = TRAVERSE_START + (TRAVERSE_INCREMEETS * CalibrationPara.SSE_subscript);
-            for( i = 0 ;i < POINT_THRESHOLD;i++)
-            {
-                CalibrationPara.Ang_SSE[CalibrationPara.SSE_subscript] += CALGet_SSE(ang,i);
-            }
-            //printf("CalibrationPara.Ang_SSE[%d] = %f\n",CalibrationPara.SSE_subscript,CalibrationPara.Ang_SSE[CalibrationPara.SSE_subscript]);
-            CalibrationPara.SSE_subscript++;
+        // if(CalibrationPara.SSE_subscript < SSE_LEN)
+        // {
+        //     ang = TRAVERSE_START + (TRAVERSE_INCREMEETS * CalibrationPara.SSE_subscript);
+        //     for( i = 0 ;i < POINT_THRESHOLD;i++)
+        //     {
+        //         CalibrationPara.Ang_SSE[CalibrationPara.SSE_subscript] += CALGet_SSE(ang,i);
+        //     }
+        //     //printf("CalibrationPara.Ang_SSE[%d] = %f\n",CalibrationPara.SSE_subscript,CalibrationPara.Ang_SSE[CalibrationPara.SSE_subscript]);
+        //     CalibrationPara.SSE_subscript++;
             
-            tempProgress += CalibrationPara.SSE_subscript * 2;
-            Calibration_Progress(tempProgress);
-        }else{
-            j = CAL_min_subscript(CalibrationPara.Ang_SSE, SSE_LEN);
-            CAL_finsh(j);
-        }
+        //     tempProgress += CalibrationPara.SSE_subscript * 2;
+        //     Calibration_Progress(tempProgress);
+        // }else{
+        //     j = CAL_min_subscript(CalibrationPara.Ang_SSE, SSE_LEN);
+        //     CAL_finsh(j);
+        // }
     }
 }
 
@@ -147,18 +140,13 @@ void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
     tempProgress += 2;
     Calibration_Progress(tempProgress);
 
-    //printf("poind_count = %d\n",PeakList->point_count);
-
-    //sleep(1);
-       if (flag) // 车辆处于可以标定的状态，进行标定
+    if (flag) // 车辆处于可以标定的状态，进行标定
     {
         tempProgress = 5;
         Calibration_Progress(tempProgress);
-        
         if (CalibrationPara.Start == 0) // 没有开始标定
         {
             CalibrationPara.AveYdata = 0;
-            //rang_flag = Rang_judge(PeakList);//判断栅栏距离
             for (i = 0; i < PeakList->point_count; i++)     // 读取车辆旁边障碍物的位置，存储数据
             {
                 Calibration_flag = CAL_Target_Filtering(PeakList, i);//静止点筛选
@@ -220,41 +208,6 @@ void Adaptive_CalibrationPolyFit(void)
 }
 
 
-
-
-
-uint8_t Rang_judge(const or_point_cloud_format_t *PeakList)
-{
-    // uint32_t i = 0;
-    // uint8_t result = 0;
-    // uint16_t rang0_4 = 0, rang4_8 = 0, rang8_ = 0;
-
-    // for (i = 0; i < PeakList->point_count; i++)
-    // {
-    //     result = CAL_Target_Filtering(PeakList, i); 
-    //     if((PeakList->term[i].range > 5) && (PeakList->term[i].range < 25))
-    //     {
-    //         if ((result))
-    //         {
-    //             float32_t temp_Ydata = PeakList->term[i].range * sin((0 + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
-    //             if (temp_Ydata > 0 && temp_Ydata < 4.01f) {
-    //                 rang0_4++;
-    //             } else if (temp_Ydata > 4.01f && temp_Ydata < 8.01f) {
-    //                 rang4_8++;
-    //             } 
-    //         }
-    //     }
-    // }
-    //     if (rang0_4 > rang4_8)
-    //     {
-    //         return 1;
-    //     }
-    //     else
-    //     {
-    //         return 2;
-    //     }
-    // return 0;
-}
 
 
 uint8_t Body_Posture_Detection(void)
@@ -381,7 +334,8 @@ void CALSaved_Sample_Parameters(const or_point_cloud_format_t *PeakList,uint8_t 
     CalibrationPara.Vradar[CalibrationPara.DataNum]    = PeakList->term[i].doppler;
     CalibrationPara.Vtarget[CalibrationPara.DataNum]   = (Message_VehicleMsg.Velocity / 3.6f);
     CalibrationPara.Ang_radar[CalibrationPara.DataNum] = (PeakList->term[i].azimuth);
-    if( CalibrationPara.DataNum < 1520)//POINT_THRESHOLD
+
+    if( CalibrationPara.DataNum < POINT_THRESHOLD)//
     {
         CalibrationPara.DataNum++;
     }
@@ -390,34 +344,9 @@ void CALSaved_Sample_Parameters(const or_point_cloud_format_t *PeakList,uint8_t 
 
 
 
-float32_t CALGet_SSE(float32_t ang,uint8_t i)
-{
-    float32_t v,tempang,result;
-
-    v = CalibrationPara.Vradar[i]/CalibrationPara.Vtarget[i];//-1.014
-    tempang = cosf((CalibrationPara.Ang_radar[i] - (ang * PI/180.0)));//==cos(-11.68 -12.68 -13.68 -14.68 -15.68 -16.68 -17.68 -18.68 -19.68 -20.68 -21.68)
-    result = v - tempang;  //0.97929                        
-
-    return result*result;
-}
 
 
-uint8_t CAL_min_subscript(float32_t * arr,uint8_t len)
-{
-    float temp = *(arr);
 
-    int i = 0;
-    int j = 0;
-    for(i = 0; i < len;i++)
-    {
-        if(*(arr + i) < temp)
-        {
-           temp =  *(arr + i);
-           j = i;
-        }
-    }
-    return j;
-}
 
 
 
@@ -426,8 +355,7 @@ void CAL_finsh(uint8_t i)
     float32_t TmpLinearAngle = 0;
     uint8_t tempProgress;
     uint8_t StatusArray[9] = {0};
-    TmpLinearAngle = TRAVERSE_START + (TRAVERSE_INCREMEETS * CalibrationPara.SSE_subscript);
-    //RadarPara.FarHorizontalAdptiveAngle  = TmpLinearAngle - RadarPara.FarHorizontalOffsetAngle;
+
     RadarPara.FarHorizontalAdptiveAngle  = TmpLinearAngle;
     RadarPara.FarVerticalAdptiveAngle    = RadarPara.FarVerticalOffsetAngle;
     RadarPara.TempHorizontalAdptiveAngle = RadarPara.FarHorizontalAdptiveAngle;

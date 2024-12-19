@@ -28,10 +28,12 @@ const char *Split_symbol = ",";
 #define line_NUM  300      //只读取行数
 
 sem_t semaphore,semaphore1;
+
 /* 函数名: void Output_file_clearing(char *output_filename)
  * 描述：文件清空函数，用于在开始新的一轮数据读取前清空输出文件
  * 返回值:NA
  */
+
 void Output_file_clearing(char *output_filename)
 {
     if (truncate(output_filename, 0) == -1) 
@@ -59,23 +61,34 @@ void Tag_write()
     fflush(output_fp);
     fclose(output_fp);
 }
-
+/* 函数名: Calibration_Screening_Angle()
+ * 描述：XD YD标签写入函数，用于在输出文件中写入标签
+ * 返回值:NA
+ */
 void Calibration_Screening_Angle()
 {
     Output_file_clearing(Filter_Angle_Output_File_PATH);
     Tag_write();
-
-
-
-
-
-
 }
 
+/* 函数名: Calibration_Screening_Angle()
+ * 描述 ：YD XD数据写入函数，用于在输出文件中写入标签
+ * 返回值:NA
+ */
 
+void YD_XD_writing(float YD,float XD)
+{
+    FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
+    if (NULL == output_fp)
+    {
+        perror("open_output_file error");
+        return;
+    }
+    fprintf(output_fp,"%f\t%f\n",YD,XD);
+    fflush(output_fp);
+    fclose(output_fp);
 
-
-
+}
 
 
 void Calibration_Required_data()
@@ -94,7 +107,6 @@ void FILE_Read(void)
     int point_id;
     int frame_num_temp = 0x01;
     float32_t speed_temp = 0.0f;
-
 
     FILE *output_fp = fopen(FILE_PATH,"r");
     if (NULL == output_fp)
@@ -148,7 +160,6 @@ void FILE_Read(void)
                     }
                     switch (list)
                     {   
-                        
                         case Frame_number:
                             if(frame_num_temp != atoi(token))
                             {
@@ -198,7 +209,6 @@ void FILE_Read(void)
             line++;
             list = 0;
         }
-        
     }
     fclose(output_fp);
     CAL_MODE = DATA_READ_EXIT;   //File read complete
@@ -225,7 +235,6 @@ void Calibration_runing_task(void)
                     Adaptive_Calibration(&Calibration_Message.or_point_cloud_format_t);
                 break;
                 default:
-    
                     break;
             }
 
@@ -241,14 +250,14 @@ void Calibration_runing_task(void)
                 }
                 return;
             }
-
             sem_post(&semaphore);
-        
     }
 }
 
 void main(int argc, char**argv)
 {
+    Calibration_Screening_Angle();
+
     if(sem_init(&semaphore,0,1) != 0){
         perror("sem_init error");
         exit(EXIT_FAILURE);

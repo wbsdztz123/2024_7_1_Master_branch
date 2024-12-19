@@ -9,15 +9,16 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <math.h>
+#include "main.h"
 
 #define max(a,b) ((a) > (b) ? (a) : (b))
 //初始化
 #define CalibrationTime       180       //一次标定的帧数，150代表150帧。
-#define Timeframe              10//7//20//20//7//8//7//7         //1帧数中有用的数据，5代表5个数据是有用数据。
+#define Timeframe              10//7//20//8/        //1帧数中有用的数据，5代表5个数据是有用数据。
 #define CalibrationRangeMin   8.0f//15//20//15//3//3    最小标定距离
 
 #define CalibrationRangeMid   30.0f     
-#define CalibrationRangeMax   65.0f//60.0f//40.0f//50.0f//40.0f//50//40//50//45//50//25//35//12//35       //最大标定距离35
+#define CalibrationRangeMax   65.0f//60.0f//40.0f//50.0f//40.0f     //最大标定距离35
 #define AdaptiveCalibration_OutputB       0      //自适应标定不输出B
 //#define AdaptiveCalibration_OutputB       1      //自适应标定输出B
 
@@ -26,8 +27,8 @@
 #define Calibration_MinVelocity         4.0f
 #define Calibration_MaxVelocity         19.5f
 #define Calibration_MaxRoadCurve        300.0f
-#define Calibration_MinRCs              15.0f//5//30//30//40//45//30
-#define Calibration_Ydata_gap                2.0f //1.5f//2.0f//1.0f//0.7f//1.0f//0.7f//1.0f//0.5f//1.0f
+#define Calibration_MinRCs              15.0f//5//30//40//45
+#define Calibration_Ydata_gap                2.0f //1.5f//0.7f//1.0f//0.5f
 #define PI                          3.14159265358979f
 #define RadarInstallAngle            0.0f;
 #define INSTALL_FRONT               0

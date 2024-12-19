@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <math.h>
+#include "main.h"
 
 #define max(a,b) ((a) > (b) ? (a) : (b))
 //初始化
@@ -26,7 +27,7 @@
 #define Calibration_MaxVelocity         19.5f
 #define Calibration_MaxRoadCurve        300.0f
 #define Calibration_MinRCs              15.0f//5//30//30//40//45//30
-#define Calibration_Ydata_gap                2.0f //1.5f//2.0f//1.0f//0.7f//1.0f//0.7f//1.0f//0.5f//1.0f
+#define Calibration_Ydata_gap                5.0f//1.5f//2.0f //1.5f//2.0f//1.0f//0.7f//1.0f//0.7f//1.0f//0.5f//1.0f
 #define PI                          3.14159265358979f
 #define RadarInstallAngle            0.0f;
 #define INSTALL_FRONT               0
@@ -39,13 +40,15 @@ typedef int  int32_t;
 typedef unsigned   uint32_t;
 typedef float float32_t;
 
+#define POINT_THRESHOLD 5000
+
+
 typedef enum {
     CALIBRATION_INIT = 0x00,
     CALIBRATION_RUNING,
     DATA_READ_EXIT,
     CALIBRATION_EXIT
 } CALIBRATION_MODE;
-
 
 typedef struct
 {
@@ -63,7 +66,8 @@ typedef struct
 
 
 typedef struct
-{   float32_t InstallPosition;
+{  
+     float32_t InstallPosition;
     float32_t InstallAngle;
     float32_t FarHorizontalOffsetAngle;
     float32_t FarVerticalOffsetAngle;
@@ -78,8 +82,6 @@ typedef struct
 }RadarParaS;
 
 
-
-
 typedef struct TagCalibrationPara               //标定
 {
     uint8_t      State;                         //标定状态    0x10, OfflineCalibration ,   0x20  AdaptiveCalibration
@@ -87,7 +89,6 @@ typedef struct TagCalibrationPara               //标定
     uint8_t      Master_Result;                 //主雷达标定结果    0为未标定，1为标定成功，2为标定失败
     uint8_t      Error_Number;
 
-    
     /***************自适应标定参数**********************/
     uint8_t      Adaptive_step;                   //自适应标定步骤
     uint8_t      Start;                         //标定开始标志
@@ -113,6 +114,25 @@ typedef struct TagCalibrationPara               //标定
     uint8_t      errType;
     uint16_t Calibration_Counter;
     uint8_t Calibration_status;
+
+    /**************************New_calibration*************** */
+    uint16_t     count_minus_40_to_minus_30;           
+    uint16_t     count_minus_30_to_minus_20;  
+    uint16_t     count_minus_20_to_minus_10;  
+    uint16_t     count_minus_10_to_minus_0;  
+    uint16_t     count_0_to_10;       
+    uint16_t     count_10_to_20;  
+    uint16_t     count_20_to_30;  
+    uint16_t     count_30_to_40;  
+    
+    float32_t    Vradar[POINT_THRESHOLD];            //当前帧自车速度
+    float32_t    Vtarget[POINT_THRESHOLD];            //目标速度
+    float32_t    Ang_radar[POINT_THRESHOLD];
+    float32_t    Ang_target[POINT_THRESHOLD];
+    /**************************New_calibration*************** */
+
+    
+
 }CalibrationParaS;
 
 /* Includes ------------------------------------------------------------------*/
@@ -137,15 +157,7 @@ typedef struct
     RadarParaS RadarParaS;
     CalibrationParaS CalibrationParaS;
     or_point_cloud_format_t or_point_cloud_format_t;
-
 }Calibration_Date;
-
-
-
-
-
-
-
 
 
 void Adaptive_CalibrationInit(void);
@@ -162,5 +174,6 @@ void GetAdaptiveCalStatus(uint8_t * StatusArray);
 void Calibration_Progress(uint8_t pace);
 uint8_t Body_Posture_Detection(void);
 uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList,uint8_t i);
+
 
 #endif /* __ANGLE_CONFIG_H */

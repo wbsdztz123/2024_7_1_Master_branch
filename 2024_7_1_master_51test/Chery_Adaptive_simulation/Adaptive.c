@@ -106,7 +106,7 @@ void Adaptive_Calibration(const or_point_cloud_format_t *PeakList)
     if (CalibrationPara.FalseFrame > (CalibrationTime / 10))
     {
         CalibrationPara.Adaptive_step = 7; //zjn test
-        printf("111\n");
+        //printf("111\n");
         Adaptive_CalibrationClear(); // 标定放弃
         CalibrationPara.Driving_Profile = 0x10; // 目标不充分
     }
@@ -126,7 +126,7 @@ void Adaptive_Calibration(const or_point_cloud_format_t *PeakList)
         else
         {
             CalibrationPara.Adaptive_step = 10; //zjn test
-            printf("131\n");
+            //printf("131\n");
             Adaptive_CalibrationClear(); // 标定放弃
             CalibrationPara.Driving_Profile = 0x10; // 目标不充分
         }
@@ -157,7 +157,7 @@ void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
     {
         CalibrationPara.Error_Number = 0; // 车速、档位、转弯正确，则时间清零。
 
-printf("CalibrationPara.Start2 = %d\n", CalibrationPara.Start);
+        //printf("CalibrationPara.Start2 = %d\n", CalibrationPara.Start);
         if (CalibrationPara.Start == 0) // 没有开始标定
         {
             CalibrationPara.AveYdata = 0;
@@ -177,7 +177,7 @@ printf("CalibrationPara.Start2 = %d\n", CalibrationPara.Start);
             default:
                 lower_bound = 0.0f;
                 upper_bound = 15.0f;
-                printf("181\n");
+                //printf("181\n");
                 Adaptive_CalibrationClear(); // 标定放弃
                 break;
             }
@@ -204,12 +204,12 @@ printf("CalibrationPara.Start2 = %d\n", CalibrationPara.Start);
             tempProgress = CalibrationPara.Counter * 14;
             tempProgress += 5;
             Calibration_Progress(tempProgress);
-            printf("Start_num = %d\n", Start_num);
-            sleep(1);
+            //printf("Start_num = %d\n", Start_num);
+            //sleep(1);
             if (Start_num >= Timeframe) {
                 CalibrationPara.AveYdata = CalibrationPara.AveYdata / Start_num;
 
-                printf("CalibrationPara.AveYdata = %f\n", CalibrationPara.AveYdata);
+               // printf("CalibrationPara.AveYdata = %f\n", CalibrationPara.AveYdata);
 
                 if ((CalibrationPara.AveYdata > 0.5f) && (CalibrationPara.AveYdata < 8.0f)) //3.0-4.0-4.5-5.0-6.0-8.0
                 {
@@ -226,14 +226,14 @@ printf("CalibrationPara.Start2 = %d\n", CalibrationPara.Start);
                     CalibrationPara.Adaptive_step = 1; //zjn test
                 } else {
                     CalibrationPara.Adaptive_step = 2; //zjn test
-                    printf("233\n");
+                    //printf("233\n");
                     Adaptive_CalibrationClear(); // 标定放弃
                     CalibrationPara.Driving_Profile = 0x10; //目标不充分
 
                 }
             } else {
                 CalibrationPara.Adaptive_step = 3; //zjn test
-                printf("240\n");
+                //printf("240\n");
                 Adaptive_CalibrationClear(); // 标定放弃
                 CalibrationPara.Driving_Profile = 0x10; //目标不充分
 
@@ -254,6 +254,7 @@ printf("CalibrationPara.Start2 = %d\n", CalibrationPara.Start);
                         float X = PeakList->term[i].range * cos((0 + azimuth_deg) * PI / 180);
                         float Y = PeakList->term[i].range * sin((0 + azimuth_deg) * PI / 180);
 
+                        
 
                         if (CalibrationPara.AveYdata < 2.2f) {
                             if (CalibrationPara.DataNum < CalibrationTime * Timeframe
@@ -263,6 +264,7 @@ printf("CalibrationPara.Start2 = %d\n", CalibrationPara.Start);
                                 CalibrationPara.Ydata[CalibrationPara.DataNum] = Y;
                                 CalibrationPara.DataNum++;
                                 Start_num++;
+                                YD_XD_writing(X,Y);
                             }
                         } else {
                             if (CalibrationPara.DataNum < CalibrationTime * Timeframe
@@ -273,6 +275,7 @@ printf("CalibrationPara.Start2 = %d\n", CalibrationPara.Start);
                                 CalibrationPara.Ydata[CalibrationPara.DataNum] = Y;
                                 CalibrationPara.DataNum++;
                                 Start_num++;
+                                YD_XD_writing(X,Y);
                             }
                         }
                     }
@@ -400,7 +403,7 @@ uint8_t Rang_judge(const or_point_cloud_format_t *PeakList)
 
 uint8_t Body_Posture_Detection(void)
 {
-    printf("Message_VehicleMsg.Velocity = %f\n",Message_VehicleMsg.Velocity);
+    //printf("Message_VehicleMsg.Velocity = %f\n",Message_VehicleMsg.Velocity);
     uint8_t result = 0;
     float velocity = Message_VehicleMsg.Velocity / 3.6f;
     float steeringAngle = fabs(Message_VehicleMsg.SteeringAngle);

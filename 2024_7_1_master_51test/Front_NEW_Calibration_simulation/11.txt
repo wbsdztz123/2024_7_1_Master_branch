@@ -1,1 +1,0 @@
-ang = -16.687500,dopplor = -6.671875,rang = 8.234375,VehicleMsg_Vel = 6.777778
