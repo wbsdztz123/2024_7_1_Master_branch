@@ -6,12 +6,13 @@
 #include <unistd.h>
 #include <math.h>
 #define GTRACK_NUM_POINTS_MAX 128
+#define Speed_unit 0.277778f   //km/h   1.0f_m/s
 
 #define CalibrationTime       180
 #define Timeframe             5
-#define CalibrationRangeMin   3
+#define CalibrationRangeMin   2//3
 #define CalibrationRangeMid   21
-#define CalibrationRangeMax   40//50//80//60//40//100
+#define CalibrationRangeMax   40//30//3060//40//50//40//50//80//60//40//100
 #define AdaptiveCalibration_OutputB       0
 //#define AdaptiveCalibration_OutputB       1
 

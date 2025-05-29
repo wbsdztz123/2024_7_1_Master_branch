@@ -61,6 +61,12 @@
     "qx_adaptive.h": "c",
     "string.h": "c",
     "stdlib.h": "c",
-    "semaphore.h": "c"
+    "semaphore.h": "c",
+    "limits": "c",
+    "type_traits": "c",
+    "pthread.h": "c",
+    "main.h": "c",
+    "stdbool.h": "c",
+    "stdio.h": "c"
   }
 }

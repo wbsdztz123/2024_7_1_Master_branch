@@ -58,6 +58,30 @@
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "C_Cpp.errorSquiggles": "enabled",
   "files.associations": {
-    "conio.h": "c"
+    "conio.h": "c",
+    "limits": "c",
+    "cmath": "c",
+    "cstdlib": "c",
+    "adaptive.h": "c",
+    "qx_adaptive.h": "c",
+    "stdio.h": "c",
+    "type_traits": "c",
+    "main.h": "c",
+    "calibration_common.h": "c",
+    "pthread.h": "c",
+    "math.h": "c",
+    "string.h": "c",
+    "stdlib.h": "c",
+    "time.h": "c",
+    "windows.h": "c",
+    "types.h": "c",
+    "stat.h": "c",
+    "timeb.h": "c",
+    "stdbool.h": "c",
+    "stdint.h": "c",
+    "*.tcc": "c",
+    "adaptive_calibration.h": "c",
+    "minwindef.h": "c",
+    "unistd.h": "c"
   }
 }

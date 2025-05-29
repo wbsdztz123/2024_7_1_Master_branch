@@ -202,6 +202,7 @@ void SaveAdaptiveCalStatus_DID_0x4902(uint8_t * StatusArray)
 
 void Adaptive_CalibrationClear(void)
 {
+    printf("clear*****************\n");
    uint16_t i;
     if (CalibrationPara.Start == 1||CalibrationPara.Start == 2)
     {
@@ -251,7 +252,7 @@ void Adaptive_Calibration(uint32_t point_count,GTRACK_measurementPoint *PeakList
     if (CalibrationPara.FalseFrame > (CalibrationTime / 10))
     {
         CalibrationPara.Adaptive_step = 7; //zjn test
-
+        printf("1111111111111111111111111111111111111111111\n");
         Adaptive_CalibrationClear(); // 标定放弃
         CalibrationPara.Driving_Profile = 0x10; // 目标不充分
     }
@@ -271,7 +272,7 @@ void Adaptive_Calibration(uint32_t point_count,GTRACK_measurementPoint *PeakList
         else
         {
             CalibrationPara.Adaptive_step = 10; //zjn test
-
+            printf("22222222222222222222222222222222222222222222\n");
             Adaptive_CalibrationClear(); // 标定放弃
             CalibrationPara.Driving_Profile = 0x10; // 目标不充分
         }
@@ -296,7 +297,7 @@ void Adaptive_CalibrationSaveData(uint32_t point_count,GTRACK_measurementPoint *
     tempProgress += 2;
     Calibration_Progress(tempProgress);
 
-printf("flag: %d\n",flag);
+//printf("flag: %d\n",flag);
 #ifdef _CALIBRATION_DEBUG_
 
     int32_t tmp_data;
@@ -327,6 +328,7 @@ printf("flag: %d\n",flag);
             rang_flag                = Rang_judge(point_count,PeakList); // 判断栅栏距离
 
             float lower_bound, upper_bound;
+            printf("rang_flag =%d",rang_flag);
             switch (rang_flag) {
             case 2:
                 lower_bound = 2.0f;
@@ -335,12 +337,15 @@ printf("flag: %d\n",flag);
             case 1:
                 lower_bound = 0.5f;
                 upper_bound = 2.2f;
+                
                 break;
             default:
                 lower_bound = 3.9f;
                 upper_bound = 7.0f;
                 break;
             }
+            // lower_bound = 0.5f;
+            // upper_bound = 7.0f;
             //printf("lower_bound = %f, upper_bound = %f\n",lower_bound,upper_bound);
 
             for (i = 0; i < point_count ;i++) // 读取车辆旁边障碍物的位置，存储数据
@@ -349,7 +354,7 @@ printf("flag: %d\n",flag);
                 //printf("calibration_flag = %f\n",Calibration_flag);
                 if (Calibration_flag && rang_flag) {
                     float azimuth = PeakList[i].vector.azimuth * 180 / PI;
-                    temp_Ydata    = PeakList[i].vector.range * sin((RadarPara.InstallAngle + azimuth) * PI / 180);
+                    temp_Ydata    = PeakList[i].vector.range * sin((RadarPara.InstallAngle - azimuth) * PI / 180);
 
                     if (temp_Ydata > lower_bound && temp_Ydata < upper_bound) {
                         Start_num++;
@@ -365,8 +370,10 @@ printf("flag: %d\n",flag);
             //printf("start_num = %d\n",Start_num);
             if (Start_num >= Timeframe) {
                 CalibrationPara.AveYdata = CalibrationPara.AveYdata / Start_num;
-                if ((CalibrationPara.AveYdata > 0.5f) && (CalibrationPara.AveYdata < 7.0f)) //3.0-4.0-4.5-5.0-6.0-8.0
+                
+                if ((CalibrationPara.AveYdata > lower_bound) && (CalibrationPara.AveYdata < upper_bound)) //3.0-4.0-4.5-5.0-6.0-8.0
                 {
+                    printf("CalibrationPara.AveYdata = %f************************************",CalibrationPara.AveYdata);
                     CalibrationPara.Start = 1;
                     CalibrationPara.SteeringAngle = Message_VehicleMsg.SteeringAngle; // 存储标定开始的方向盘转角
                     CalibrationPara.Velocity = (Message_VehicleMsg.Velocity); // 存储标定开始的车速
@@ -395,6 +402,7 @@ printf("flag: %d\n",flag);
                 } else {
                     CalibrationPara.Adaptive_step = 2; //zjn test
                     //CalibrationPara.Start = 2;      //单帧点符合但是栅栏横向距离不符合
+                    printf("3333333333333333333333333333333333333333333333333\n");
                     Adaptive_CalibrationClear(); // 标定放弃
                     //CalibrationPara.errType = 0x06;
                     CalibrationPara.Driving_Profile = 0x10; //目标不充分
@@ -414,6 +422,7 @@ printf("flag: %d\n",flag);
             } else {
                 CalibrationPara.Adaptive_step = 3; //zjn test
                 //CalibrationPara.Start = 2;     //单帧点不符合
+                printf("444444444444444444444444444444444444444444444444444444444\n");
                 Adaptive_CalibrationClear(); // 标定放弃
                 //CalibrationPara.errType = 0x06;
                 CalibrationPara.Driving_Profile = 0x10; //目标不充分
@@ -434,37 +443,52 @@ printf("flag: %d\n",flag);
         } else // 已经开始标定
         {
             if ((fabs(Message_VehicleMsg.SteeringAngle - CalibrationPara.SteeringAngle)
-                 < 3.0f) //5//6//10// 方向盘转角偏差小于10才行。
+                 < 10.0f) //5//6//10// 方向盘转角偏差小于10才行。
                 && (fabs((Message_VehicleMsg.Velocity) - CalibrationPara.Velocity) < 3.0f)) // 3
             {
+                //int save_flag;
                 Start_num = 0;
                 for (i = 0; i < point_count ;i++) {
+                   // save_flag = 0;
                     Calibration_flag = CAL_Target_Filtering(PeakList, i);
 
                     if (Calibration_flag) {
                         float azimuth_deg = PeakList[i].vector.azimuth * 180 / PI;
-                        float X = PeakList[i].vector.range * cos((RadarPara.InstallAngle + azimuth_deg) * PI / 180);
-                        float Y = PeakList[i].vector.range * sin((RadarPara.InstallAngle + azimuth_deg) * PI / 180);
+                        float X = PeakList[i].vector.range * cos((RadarPara.InstallAngle - azimuth_deg) * PI / 180);
+                        float Y = PeakList[i].vector.range * sin((RadarPara.InstallAngle - azimuth_deg) * PI / 180);
+                        // for(int j = 0; j < CalibrationPara.DataNum; j++)
+                        // {
+                        //     if(X==CalibrationPara.Xdata[j])
+                        //     {
+                        //         save_flag++;
+                        //     }
+                        // }
 
+                    //  if(save_flag < 3)
+                    // {
                         if (CalibrationPara.AveYdata < 2.2f) {
                             if (CalibrationPara.DataNum < CalibrationTime * Timeframe
-                                && Y > (CalibrationPara.AveYdata - (Calibration_Ydata_gap - 0.2))
-                                && Y < (CalibrationPara.AveYdata + (Calibration_Ydata_gap - 0.2)) && X > 5.0f) {
+                                && Y > (CalibrationPara.AveYdata - (Calibration_Ydata_gap))
+                                && Y < (CalibrationPara.AveYdata + (Calibration_Ydata_gap)) && X > 8.0f) {
                                 CalibrationPara.Xdata[CalibrationPara.DataNum] = X;
                                 CalibrationPara.Ydata[CalibrationPara.DataNum] = Y;
+                                YD_XD_writing(Y, X);
                                 CalibrationPara.DataNum++;
                                 Start_num++;
                             }
                         } else {
                             if (CalibrationPara.DataNum < CalibrationTime * Timeframe
                                 && Y > (CalibrationPara.AveYdata - Calibration_Ydata_gap)
-                                && Y < (CalibrationPara.AveYdata + Calibration_Ydata_gap) && X > 5.0f) {
+                                && Y < (CalibrationPara.AveYdata + Calibration_Ydata_gap) && X > 8.0f) {
+                                YD_XD_writing(Y, X);
                                 CalibrationPara.Xdata[CalibrationPara.DataNum] = X;
                                 CalibrationPara.Ydata[CalibrationPara.DataNum] = Y;
                                 CalibrationPara.DataNum++;
                                 Start_num++;
                             }
                         }
+                   // }
+
                     }
                 }
 
@@ -476,8 +500,9 @@ printf("flag: %d\n",flag);
                 if (Start_num <= (Timeframe / 2 + 1)) {
                     CalibrationPara.FalseFrame++; // 连续无目标的帧数
 
-                    if (CalibrationPara.FalseFrame > (CalibrationTime / 18)) //10
+                    if (CalibrationPara.FalseFrame > (CalibrationTime / 9)) //10
                     {
+                        printf("point_count is too few\n");
                         CalibrationPara.Adaptive_step = 5; //zjn test
                         Adaptive_CalibrationClear();       // 标定放弃
                         //CalibrationPara.errType = 0x06;
@@ -511,6 +536,7 @@ printf("flag: %d\n",flag);
 #endif
                 }
             } else {
+                printf("666666666666666666666666666666666666666666\n");
                 Adaptive_CalibrationClear(); // 标定放弃
 
                 CalibrationPara.Adaptive_step = 6;                                                  //zjn test
@@ -529,7 +555,9 @@ printf("flag: %d\n",flag);
         }
     } else {
         CalibrationPara.Error_Number++; // 车速、档位、转弯半径不对的时候，不进行标定
+        printf("777777777777777777777777777777777777777777777\n");
         Adaptive_CalibrationClear();    // 标定放弃
+        printf("flag is not true***************************\n");
                                         // if (CalibrationPara.Error_Number > 500) // 30s时间
                                         // {
 //CalibrationPara.errType = 0x06;  //车辆信号不满足
@@ -625,7 +653,8 @@ uint8_t Rang_judge(uint32_t point_count,GTRACK_measurementPoint *PeakList)
         result = CAL_Target_Filtering(PeakList, i); 
         if (result)
         {
-            float32_t temp_Ydata = PeakList[i].vector.range * sin((RadarPara.InstallAngle + (PeakList[i].vector.azimuth * 180 / PI)) * PI / 180);
+            float32_t temp_Ydata = PeakList[i].vector.range * sin((RadarPara.InstallAngle - (PeakList[i].vector.azimuth * 180 / PI)) * PI / 180);
+            
             if (temp_Ydata < 2.01f) {
                 rang0_2++;
             } else if (temp_Ydata < 4.01f) {
@@ -658,11 +687,14 @@ uint8_t Rang_judge(uint32_t point_count,GTRACK_measurementPoint *PeakList)
 uint8_t Body_Posture_Detection(void)
 {
     uint8_t result = 0;
+    Message_VehicleMsg.Velocity = Message_VehicleMsg.Velocity/3.6f;
     float velocity = Message_VehicleMsg.Velocity;
+
+
     float steeringAngle = fabs(Message_VehicleMsg.SteeringAngle);
     float curveRadius = fabs(Message_VehicleMsg.CurveRadius);
     float yawRate = fabs(Message_VehicleMsg.YawRate);
-
+    //printf("vel = %f\n",Message_VehicleMsg.Velocity);
     result = (velocity > Calibration_MinVelocity ) && (velocity < Calibration_MaxVelocity) 
              && (steeringAngle < Calibration_MaxSteeringAngle) 
              && (curveRadius > Calibration_MaxRoadCurve) 
@@ -717,23 +749,29 @@ uint8_t CAL_Target_Filtering(GTRACK_measurementPoint *PeakList,uint8_t i)
 {
     uint8_t Calibration_flag = 0;
     float32_t temp_speed_gap = 0xff;
-    
+    // if(CalibrationPara.Start == 0)
+    // {
+    //     #define CalibrationRangeMin 8
+    //     #define CalibrationRangeMax 20
+    // }
+    // else
+    // {
+        #define CalibrationRangeMin 8
+        #define CalibrationRangeMax 45
+    // }
+
     if (PeakList[i].vector.range > CalibrationRangeMin 
         && PeakList[i].vector.range < CalibrationRangeMax
-        && (PeakList[i].vector.azimuth * 180 / PI) < 10.0f
+        && (PeakList[i].vector.azimuth * 180 / PI) > -10.0f
         && PeakList[i].snr>= Calibration_MinRCs)
     {
-        printf("rang[%d] = %f, doppler[%d] = %f, azimuth[%d] = %f, snr[%d] = %f\n",i,PeakList[i].vector.range,i,PeakList[i].vector.doppler,i,PeakList[i].vector.azimuth * 180 / PI,i,PeakList[i].snr);
         bool isLeftOrRightFront = (RadarPara.InstallPosition == INSTALL_LEFT_FRONT || RadarPara.InstallPosition == INSTALL_RIGHT_FRONT);
         bool isDopplerNegative = PeakList[i].vector.doppler < 0.0f;
 
         if ((isLeftOrRightFront && isDopplerNegative) || (!isLeftOrRightFront && !isDopplerNegative))
         {
-           // printf("rang[%d] = %f, doppler[%d] = %f, azimuth[%d] = %f, snr[%d] = %f\n",i,PeakList[i].vector.range,i,PeakList[i].vector.doppler,i,PeakList[i].vector.azimuth,i,PeakList[i].snr);
-            
-            float32_t cosValue = cos((RadarPara.InstallAngle + (PeakList[i].vector.azimuth * 180 / PI)) * PI / 180);
+            float32_t cosValue = cos((RadarPara.InstallAngle - (PeakList[i].vector.azimuth * 180 / PI)) * PI / 180);
             float32_t speed = Message_VehicleMsg.Velocity;
-           // printf("speed = %f\n",speed);
             float32_t threshold = 0.15f;
 
             if (speed >= 4.1f && speed < 8.3f)

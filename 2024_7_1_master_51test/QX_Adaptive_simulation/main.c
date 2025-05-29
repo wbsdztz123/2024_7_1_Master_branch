@@ -3,7 +3,7 @@
 #include "main.h"
 #include <semaphore.h>
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 Calibration_Date Calibration_Message = {0};
 extern  CalibrationParaS CalibrationPara;
 extern  Message_VehicleMsgS Message_VehicleMsg;
@@ -127,7 +127,7 @@ void FILE_Read(void)
                             if(frame_num_temp != atoi(token))
                             {
                                 frame_num_temp = atoi(token);
-                                printf("frame_num_temp = %d\n",frame_num_temp);
+                               printf("frame_num_temp = %d\n",frame_num_temp);
                                 Calibration_Message.or_point_cloud_format_t.point_count = point_id + 1;
 
                                 point_id = 0;
@@ -180,7 +180,6 @@ void FILE_Read(void)
             line++;
             list = 0;
         }
-        
     }
     fclose(output_fp);
     CAL_MODE = DATA_READ_EXIT;   //File read complete
@@ -211,7 +210,7 @@ void Calibration_runing_task(void)
                     AdaptiveCalStart();
                     break;
                 case CALIBRATION_RUNING:
-                printf("CALIBRATION_RUNING\n");
+               // printf("CALIBRATION_RUNING\n");
                 //usleep(1000000);
                     Calibration_Required_data();
                     Adaptive_Calibration(Calibration_Message.or_point_cloud_format_t.point_count,Peakpoint);
@@ -234,12 +233,12 @@ void Calibration_runing_task(void)
                 return;
             }
             sem_post(&semaphore);
-        
     }
 }
 
 void main(int argc, char**argv)
 {
+    Calibration_Screening_Angle();
     if(sem_init(&semaphore,0,1) != 0){
         perror("sem_init error");
         exit(EXIT_FAILURE);
@@ -267,3 +266,68 @@ void main(int argc, char**argv)
 
     //graphics();
 }
+
+
+/* 函数名: Calibration_Screening_Angle()
+ * 描述 ：YD XD数据写入函数，用于在输出文件中写入标签
+ * 返回值:NA
+ */
+
+ /* 函数名: void Output_file_clearing(char *output_filename)
+ * 描述：文件清空函数，用于在开始新的一轮数据读取前清空输出文件
+ * 返回值:NA
+ */
+
+void Output_file_clearing(char *output_filename)
+{
+    if (truncate(output_filename, 0) == -1) 
+    {
+        perror("Error truncating file");
+        return ;
+    }
+}
+
+/* 函数名: Tag_write()
+ * 描述：标签写入函数，用于在输出文件中写入标签
+ * 返回值:NA
+ */
+
+void Tag_write()
+{
+    FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
+    if (NULL == output_fp)
+    {
+        perror("open_output_file error");
+        return;
+    }
+    fprintf(output_fp,"%s\t","YD");
+    fprintf(output_fp,"%s\n","XD");
+    fflush(output_fp);
+    fclose(output_fp);
+}
+
+ void YD_XD_writing(float YD,float XD)
+ {
+     FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
+     if (NULL == output_fp)
+     {
+         perror("open_output_file error");
+         return;
+     }
+     fprintf(output_fp,"%f\t%f\n",YD,XD);
+     fflush(output_fp);
+     fclose(output_fp);
+ 
+ }
+
+ /* 函数名: Calibration_Screening_Angle()
+ * 描述：XD YD标签写入函数，用于在输出文件中写入标签
+ * 返回值:NA
+ */
+void Calibration_Screening_Angle()
+{
+    Output_file_clearing(Filter_Angle_Output_File_PATH);
+    Tag_write();
+}
+
+ 

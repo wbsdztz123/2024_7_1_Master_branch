@@ -17,27 +17,27 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <math.h>
+#include "main.h"
 
 
 
+#define CalibrationTime       180//110
+#define Timeframe             5//5//4//5//6//5//6//7//5//4//3//5//6//5//6//7//5//7//8
+// #define CalibrationRangeMin   8.0f//3.0f//15
+ 
+// #define CalibrationRangeMax   40.0f//5//70//65//45.0f//50.0f//
+#define AdaptiveCalibration_OutputB       0      
+//#define AdaptiveCalibration_OutputB       1      
 
-#define CalibrationTime       180//110//120//100//80//57//180//57       //һ�α궨��֡����150����150֡��
-#define Timeframe              7//8//7//7         //1֡�������õ����ݣ�5����5���������������ݡ�
-#define CalibrationRangeMin   3.0f//15//20//15//3//3    ��С�궨����
-#define CalibrationRangeMid   30.0f     
-#define CalibrationRangeMax   45.0f//50.0f//50.0f//40.0f//50.0f//40.0f//50//40//50//45//50//25//35//12//35       //���궨����35
-#define AdaptiveCalibration_OutputB       0      //����Ӧ�궨�����B
-//#define AdaptiveCalibration_OutputB       1      //����Ӧ�궨���B
-
-#define Calibration_MaxSteeringAngle    15.0f//5.0f//10//20   
+#define Calibration_MaxSteeringAngle    10.0f//5.0f//10//20   
 #define Calibration_MaxYawRate          20.0f
 #define Calibration_MinVelocity         4.0f
 #define Calibration_MaxVelocity         19.5f
 #define Calibration_MaxRoadCurve        300.0f
-#define Calibration_MinRCs              10.0f//15.0f//5//30//30//40//45//30
-#define Calibration_Ydata_gap                 0.7f//0.7f//0.7f//2.0f//0.7f//1.0f//0.7f//1.0f//0.5f//1.0f
+#define Calibration_MinRCs              10.0f//8.0f//10.0f//15.0f
+#define Calibration_Ydata_gap                1.5f//0.7f//0.7f
 
-#define RadarInstallAngle            38
+#define RadarInstallAngle            43//38
 
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #define PI                          3.14159265358979f
@@ -111,7 +111,6 @@ typedef struct TagCalibrationPara               //标定
     uint8_t      Master_Result;                 //主雷达标定结果    0为未标定，1为标定成功，2为标定失败
     uint8_t      Error_Number;
 
-    
     /***************自适应标定参数**********************/
     uint8_t      Adaptive_step;                   //自适应标定步骤
     uint8_t      Start;                         //标定开始标志
@@ -206,7 +205,7 @@ typedef struct {
         float VerticalVelocity;
         /**  @brief   signal, DB */
         float signal; // wxq20230419
-        /**  @brief   Near Target Index,  */
+        /**  @brief   Near Target Index, */
         uint16_t NearIndex; // wxq20230424
 
         float rcs;
@@ -223,7 +222,7 @@ void Adaptive_CalibrationSaveData(uint32_t point_count,GTRACK_measurementPoint *
 void Adaptive_CalibrationPolyFit(void);
 void R_squareChack(void);
 void Adaptive_CalibrationFinish(void);
-void Adaptive_Calibration_Exit(uint8_t* StatusArray);  //�˳��궨
+void Adaptive_Calibration_Exit(uint8_t* StatusArray);  //
 uint8_t Rang_judge(uint32_t point_count,GTRACK_measurementPoint *PeakList);
 uint8_t AdaptiveCalStart(void);
 void GetAdaptiveCalStatus(uint8_t * StatusArray);

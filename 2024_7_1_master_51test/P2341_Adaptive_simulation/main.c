@@ -79,6 +79,7 @@ void Calibration_Screening_Angle()
 
 void YD_XD_writing(float YD,float XD)
 {
+    printf("YD = %f, XD = %f\n",YD,XD);
     FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
     if (NULL == output_fp)
     {
@@ -89,6 +90,20 @@ void YD_XD_writing(float YD,float XD)
     fflush(output_fp);
     fclose(output_fp);
 
+}
+
+void file_reading()
+{
+    FILE *file = fopen(Filter_Angle_Output_File_PATH, "r"); // 打开文件
+        fseek(file, 0, SEEK_END); // 移动到文件末尾
+    long filesize = ftell(file); // 获取当前文件位置，即文件大小
+
+    if ((filesize - 7) > 0) {
+        printf("file_reading is not empty\n");
+    } else {
+        printf("file_reading is empty\n");
+    }
+    fclose(file);
 }
 
 void Calibration_Required_data()
@@ -178,7 +193,7 @@ void FILE_Read(void)
                                 frame_num_temp = atoi(token);
                                 
                                 printf("frame_num_temp = %d\n",frame_num_temp);
-                                printf("/*********************************************/\n");
+                                //printf("/*********************************************/\n");
 
                                 Peakpoint[point_id].point_count = point_id + 1;//for p2341
 
@@ -254,6 +269,8 @@ void Calibration_runing_task(void)
     {
        // printf("CAL_MODE = %d\n",CAL_MODE); //wait for the semaphore
          sem_wait(&semaphore1); //wait for the semaphore
+        //  file_reading();
+        //  printf("file_reading3\n");
             switch(CAL_MODE)
             {
                 case CALIBRATION_INIT:
@@ -262,16 +279,17 @@ void Calibration_runing_task(void)
                     Adaptive_CalibrationInit();
                     break;
                 case CALIBRATION_RUNING:
-                    //printf("CALIBRATION_RUNING\n");
-                    //usleep(1000000);
+
                     Calibration_Required_data();
-                    printf("Velocity: %f\n", Message_VehicleMsg.Velocity);
+
                     Adaptive_Calibration(128,Peakpoint);
+
+
                 break;
                 default:
                     break;
             }
-
+            //file_reading();
             if(CAL_MODE == DATA_READ_EXIT||CAL_MODE == CALIBRATION_EXIT) 
             {
                 sem_post(&semaphore);
@@ -290,6 +308,29 @@ void Calibration_runing_task(void)
 
 void main(int argc, char**argv)
 {
+/******************************************* */
+int16_t i = -10;
+uint8_t high_mou = (i>>8) & 0xff;
+uint8_t low_mou = i & 0xff;
+
+int16_t max_range = high_mou << 8 | low_mou;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**************************************** */
+/*
     Calibration_Screening_Angle();
 
     if(sem_init(&semaphore,0,1) != 0){
@@ -317,4 +358,5 @@ void main(int argc, char**argv)
         perror("sem_destroy");
         exit(EXIT_FAILURE);
     }
+*/
 }

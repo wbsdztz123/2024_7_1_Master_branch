@@ -208,7 +208,7 @@ void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
             //sleep(1);
             if (Start_num >= Timeframe) {
                 CalibrationPara.AveYdata = CalibrationPara.AveYdata / Start_num;
-
+                printf("CalibrationPara.AveYdata = %f\n",CalibrationPara.AveYdata);
                // printf("CalibrationPara.AveYdata = %f\n", CalibrationPara.AveYdata);
 
                 if ((CalibrationPara.AveYdata > 0.5f) && (CalibrationPara.AveYdata < 8.0f)) //3.0-4.0-4.5-5.0-6.0-8.0
@@ -354,6 +354,7 @@ void Adaptive_CalibrationPolyFit(void)
     CalibrationPara.Adap_B     = b;
     CalibrationPara.Adap_A     = a;
     CalibrationPara.Adap_Angle = atan(a) * 180 / PI;
+    printf("CalibrationPara.AveYdata = %f\n",CalibrationPara.AveYdata);
     printf("/********************************This_is_result*******************************/\n");
     printf("/******************************************************************************/\n");
     printf("/*****************************Adap_Angle = %f****************************/\n",CalibrationPara.Adap_Angle);

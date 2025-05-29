@@ -59,6 +59,29 @@
   "files.associations": {
     "stdlib.h": "c",
     "adaptive.h": "c",
-    "new_adaptive.h": "c"
+    "new_adaptive.h": "c",
+    "semaphore.h": "c",
+    "main.h": "c",
+    "p2341_adaptive.h": "c",
+    "mycal_dll.h": "c",
+    "limits": "c",
+    "new": "c",
+    "type_traits": "c",
+    "unistd.h": "c",
+    "stdio.h": "c",
+    "cstdlib": "c",
+    "pthread.h": "c",
+    "cmath": "c",
+    "stdbool.h": "c",
+    "string.h": "c",
+    "qx_adaptive.h": "c",
+    "math.h": "c",
+    "dirent.h": "c",
+    "calibration.h": "c",
+    "stdint.h": "c",
+    "calibration_common.h": "c",
+    "graphics_for_cal.h": "c",
+    "adaptive_calibration.h": "c",
+    "minwindef.h": "c"
   }
 }

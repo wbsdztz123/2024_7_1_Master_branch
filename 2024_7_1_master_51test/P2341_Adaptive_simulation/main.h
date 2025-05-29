@@ -4,6 +4,7 @@
 
 
 //#include "graphics_for_cal.h"
+void file_reading();
 void Output_file_clearing(char *output_filename);
 void Tag_write();
 
