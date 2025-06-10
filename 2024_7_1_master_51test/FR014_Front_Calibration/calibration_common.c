@@ -3,9 +3,11 @@
 cal_extern_para_t calibration_extern_para = {0};
 adaptive_status_out_t adap_status_out = {0};
 offline_status_out_t offline_status_out = {0};
-Message_VehicleMsgS Message_VehicleMsg = {0};
 calibration_adaptive_result_content_t adap_result = {0};
-RadarParaS RadarPara = {0};
+
+
+
+
 //cal_result_t cal_result = {0};
 
 // offline_status_out_t *offline_cal_get_status(void)

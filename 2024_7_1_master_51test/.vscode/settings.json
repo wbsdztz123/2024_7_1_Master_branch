@@ -82,6 +82,8 @@
     "calibration_common.h": "c",
     "graphics_for_cal.h": "c",
     "adaptive_calibration.h": "c",
-    "minwindef.h": "c"
+    "minwindef.h": "c",
+    "commapi.h": "c",
+    "common_api.h": "c"
   }
 }

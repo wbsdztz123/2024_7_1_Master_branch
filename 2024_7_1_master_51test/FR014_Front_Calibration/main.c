@@ -2,17 +2,18 @@
 #include <pthread.h>
 #include "main.h"
 #include <semaphore.h>
-
+// #include "common_api.h"
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-Calibration_Date Calibration_Message = {0};
-// extern  CalibrationParaS CalibrationPara;
-extern  Message_VehicleMsgS Message_VehicleMsg;
-extern  RadarParaS RadarPara;
+
+
+//extern  Message_VehicleMsgS Message_VehicleMsg;
+//extern  RadarParaS RadarPara;
 CALIBRATION_MODE CAL_MODE = CALIBRATION_INIT;
 const char *Split_symbol = ",";
 #define ang_to_rad  PI/180.0f
 #define Filter_Angle_Output_File_PATH "C:\\Users\\zhujunnan\\Desktop\\MuGITHUB\\2024_7_1_master_51test\\Filter_Angle_output.txt"
 
+/****************************peak_csv_title**********/ 
 #define Frame_number 0    //帧ID
 #define Serial_number 1   //序列号
 #define Range  2
@@ -27,6 +28,9 @@ const char *Split_symbol = ",";
 /*************车辆信息************/
 #define LIST_NUM  18//15   //只读取列数前18列
 #define line_NUM  300      //只读取行数
+/****************************peak_csv_title**********/ 
+
+
 
 sem_t semaphore,semaphore1;
 

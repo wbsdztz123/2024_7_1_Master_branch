@@ -58,7 +58,7 @@ static void adaptive_result_set(calibration_adaptive_result_kind_t result,calibr
 
 bool adaptive_start()
 {
-        memset(&adapt_format, 0, sizeof(calib_adapt_format_t));
+    memset(&adapt_format, 0, sizeof(calib_adapt_format_t));
 
     //memset(&offline_status_out, 0, sizeof(offline_status_out));
     if (1) {

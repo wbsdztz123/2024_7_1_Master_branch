@@ -9,13 +9,7 @@
 #define __ADAPTIVE_CALIBRATION_H
 
 /* Includes ------------------------------------------------------------------*/
-// #include "../common/bsd_common.h"
-// #include "../or/or_point_cloud.h"
-// #include <kernel/dpl/ClockP.h>
-// #include <include/mmw_log.h>
 
-// #include "../tracker/track_obj.h"
-//#include <uds/offline_calibration.h>
 #include "calibration_common.h"
 ///////////////////////////////////////////////////////////////////
 #define ADAPTIVE_WORKMODE_CHECK_SUCCESS                      (0)
@@ -24,9 +18,7 @@
 #define ADAPTIVE_INIT_SUCCESS                                (0)
 #define ADAPTIVE_INIT_NO_SUCCESS                             (-1)
 
-
 // 常量定义
-
 #define KMH_TO_MS(kmh)                                       ((kmh) / 3.6f)
 #define SPEED_THRESHOLD_LOW                                  0.15f // 低速阈值系数
 #define SPEED_THRESHOLD_HIGH                                 0.15f // 高速阈值系数
@@ -46,7 +38,6 @@
 #define ADAPTIVE_MAX_VELOCITY          19.5f
 
 #define ADAPTIVE_MIN_CURVERADIUS           300.0f
-
 
 
 #define STEERING_TOLERANCE                                   3.0f // 方向盘转角允许偏差(度)
@@ -151,7 +142,6 @@ typedef struct {
     float y; // 横向偏移
     float z; // 高程信息
 } Point3D;
-
 
 typedef enum {
     ADAPTIVE_START = 0X01,

@@ -8,22 +8,8 @@
 #include <math.h>
 #include <minwindef.h>
 #include <unistd.h>
-// #include "../config/config_bsd.h"
-// #include "../or/or_point_cloud.h"
-// #include "../msg_vehicle/message_vehicle.h"
+#include "common_api.h"
 
-// #include <peripherals/qspi_driver.h>
-// #include "../uds/memoryaccess.h"
-// #include "uds/faultmanage.h"
-//extern int _3sradar_tui_print(const char *format, ...);
-#define int8_t char
-#define uint64_t unsigned long long
-#define float32_t float
-#define uint8_t unsigned char
-#define uint16_t unsigned short
-#define int16_t short
-#define uint32_t unsigned int
-#define int32_t int
 
 // #define true 1
 // #define false 0
@@ -34,12 +20,12 @@
 
 #define RAD_TO_DEG(rad) ((rad) * 57.2957795f) // 180/PI ≈ 57.2957795
 #define DEG_TO_RAD(deg) ((deg) * 0.0174532925f)
+
 #define EPSILON 1e-9
 #define MAX_ANGLE_DEVIATION 10.0f //角度偏差最大值
 #define MAX_DISTANCE_DEVIATION 0.5f //距离偏差最大值
 #define MAX_ANGLE_DEVIATION_AUTH 15.0f //真实下线角度偏差最大值
 #define MAX_DISTANCE_DEVIATION_AUTH 1.0f //真实下线距离偏差最大值
-#define GTRACK_NUM_POINTS_MAX 300
 
 typedef enum {
     CALIBRATION_INIT = 0x00,
@@ -49,62 +35,7 @@ typedef enum {
 } CALIBRATION_MODE;
 
 
-typedef struct
-{
-
-    float32_t Velocity; /* Vehicle Speed, Km/h*/
-
-    float32_t YawRate;       /* Vehicle Yaw Rate, - = clockwise unit deg/s */
-
-    float32_t SteeringAngle;/**/
-
-    float32_t CurveRadius;
-    float32_t RoadCurve;
-
-}Message_VehicleMsgS;
-
-
-typedef struct
-{   float32_t InstallPosition;
-    float32_t InstallAngle;
-    float32_t FarHorizontalOffsetAngle;
-    float32_t FarVerticalOffsetAngle;
-    float32_t FarHorizontalAdptiveAngle;
-    float32_t FarVerticalAdptiveAngle;
-
-    float32_t TempHorizontalOffsetAngle;
-    float32_t TempVerticalOffsetAngle;
-    float32_t TempHorizontalAdptiveAngle;
-    float32_t TempVerticalAdptiveAngle;
-
-}RadarParaS;
-
-
 /* Includes ------------------------------------------------------------------*/
-typedef struct _or_point_cloud_term_type {
-    float range;
-    float doppler;
-    float azimuth;
-    float elevation;
-    float snr;
-    float power;
-    float angle;
-} or_point_cloud_term_t;
-
-typedef struct _or_point_cloud_format_type {
-    uint32_t point_count;
-    or_point_cloud_term_t term[GTRACK_NUM_POINTS_MAX];
-} or_point_cloud_format_t;
-
-typedef struct
-{
-    Message_VehicleMsgS Message_VehicleMsgS;
-    RadarParaS RadarParaS;
-    //CalibrationParaS CalibrationParaS;
-    or_point_cloud_format_t or_point_cloud_format_t;
-
-}Calibration_Date;
-
 #define RAD_TO_DEG(rad)                                      ((rad) * 57.2957795f) // 180/PI ≈ 57.2957795
 #define DEG_TO_RAD(deg)                                      ((deg) * 0.0174532925f)
 #define Calibration_Tolerance               5.0f //标定水平容差
@@ -115,7 +46,6 @@ typedef struct
 #define DataLength_Data_4901          1
 #define DataLength_Data_4902          6
 /*******************adaptive******************/ 
-
 
 /*calibration_adaptive_result_kind_t*/
 typedef enum _calibration_adaptive_result_kind_type{
@@ -139,7 +69,6 @@ typedef struct adaptive_content_type{
     float32_t                          output_adapt_angle_v;  //俯仰角
 }adaptive_status_out_t;
 
-
 typedef struct calibration_adaptive_result_content_type{
     calibration_adaptive_result_kind_t last_result;
     float32_t                         adapt_angle_h;
@@ -156,7 +85,6 @@ typedef enum
     INSTALL_FRONT,
     INSTALL_BACK,
 }InstallPositionT;
-
 
 /*************common struct**************/
 typedef struct cal_external_para_type{
@@ -208,7 +136,6 @@ calibration_adaptive_result_content_t* get_adapt_status(void);
 void SaveAdaptiveCalStatus_DID_0x4902(uint8_t * StatusArray);
 void SaveOfflineCalStatus_DID_0x4901(uint8_t * StatusArray);
 
-
 extern CALIBRATION_MODE CAL_MODE;
 extern bool adaptive_start(void);
 extern void adaptive_real_time_status_set_func(void);
@@ -220,6 +147,5 @@ extern calibration_adaptive_result_content_t adap_result;
 extern offline_status_out_t offline_status_out;
 extern cal_extern_para_t calibration_extern_para;
 extern adaptive_status_out_t adap_status_out;
-extern Message_VehicleMsgS Message_VehicleMsg;
-extern RadarParaS RadarPara;
+
 #endif /* __ANGLE_CONFIG_H */
