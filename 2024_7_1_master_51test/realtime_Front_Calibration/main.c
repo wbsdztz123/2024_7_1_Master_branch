@@ -2,10 +2,11 @@
 #include <pthread.h>
 #include "main.h"
 #include <semaphore.h>
+#include "realtime_calibration.h"
 // #include "common_api.h"
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
+int frame_num_temp = 0x01;
 //extern  Message_VehicleMsgS Message_VehicleMsg;
 //extern  RadarParaS RadarPara;
 CALIBRATION_MODE CAL_MODE = CALIBRATION_INIT;
@@ -100,7 +101,13 @@ void Calibration_Required_data()
 {
     /*********Message_VehicleMsgS********/
     Calibration_Message.RadarParaS.InstallPosition = INSTALL_FRONT;
+
     Calibration_Message.RadarParaS.InstallAngle = 0.0f;
+
+    RadarPara.InstallAngle = 0.0f;
+    RadarPara.InstallPosition = INSTALL_FRONT;
+
+
     memcpy(&RadarPara,&Calibration_Message.RadarParaS,sizeof(RadarPara));
 }
 
@@ -111,7 +118,7 @@ void FILE_Read(void)
     int list = 0;
     bool flag = false;
     int point_id;
-    int frame_num_temp = 0x01;
+    
     float32_t speed_temp = 0.0f;
 
     FILE *output_fp = fopen(FILE_PATH,"r");
@@ -189,7 +196,7 @@ void FILE_Read(void)
                             Calibration_Message.or_point_cloud_format_t.term[point_id].doppler = (float)atof(token);
                         break;
                         case Azimuth:
-                            Calibration_Message.or_point_cloud_format_t.term[point_id].azimuth = -((float)atof(token))*ang_to_rad;
+                            Calibration_Message.or_point_cloud_format_t.term[point_id].azimuth = ((float)atof(token))*ang_to_rad;
                         break;
                         case Snr:
                             Calibration_Message.or_point_cloud_format_t.term[point_id].snr = (float)atof(token);
@@ -242,7 +249,8 @@ void Calibration_runing_task(void)
                 CAL_MODE = CALIBRATION_RUNING;
                 break;
             case CALIBRATION_RUNING:
-                adaptive_calibrate_func(&Calibration_Message.or_point_cloud_format_t);
+                realtime_calibration_func(&Calibration_Message.or_point_cloud_format_t);
+                //adaptive_calibrate_func(&Calibration_Message.or_point_cloud_format_t);
                // printf("Calibration_runing\n");
             break;
             default:
