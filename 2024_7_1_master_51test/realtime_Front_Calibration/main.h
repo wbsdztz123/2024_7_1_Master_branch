@@ -21,7 +21,7 @@
 #define EXIT_FAILURE 1
 
 
-#define FILE_PATH "C:\\Users\\zhujunnan\\Desktop\\ICAI05\\Peak.csv"
+#define FILE_PATH "C:\\Users\\zhujunnan\\Desktop\\ICAI05\\Peak1.csv"
 // #define FILE_PATH "C:\\Users\\zhujunnan\\Desktop\\NEW_CALIBRATION_temp_FILE\\17_43_12_580\\17_43_12_580\\Peak.csv"
 
 void Output_file_clearing(char *output_filename);

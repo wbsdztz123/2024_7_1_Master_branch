@@ -2,6 +2,8 @@
 #include <stdarg.h>
 
 extern adaptive_calibrationparas CalibrationPara;
+extern void YD_XD_writing(float YD,float XD);
+
 
 static void realtime_calibration_clean(uint8_t control_flag);
 static uint8_t realtime_body_posture_detection();
@@ -127,6 +129,11 @@ void Adaptive_CalibrationPolyFit(void)
     {
         float32_t x = CalibrationPara.xdata[i];
         float32_t y = CalibrationPara.ydata[i];
+
+                                    // if((CalibrationPara.AveYdata > 2.5f)&&(CalibrationPara.cal_col_num < 1))
+                                    // {
+                                    //     YD_XD_writing(y,x);
+                                    // }
 
         sum_x2 += x * x;
         sum_y += y;
@@ -328,6 +335,8 @@ static void realtime_Calibration_data_collection(const or_point_cloud_format_t *
                                     CalibrationPara.ydata[CalibrationPara.DataNum] = Y;
                                     CalibrationPara.DataNum++;
                                     Start_num++;
+
+                                    
                                 }
                             }
                         }
@@ -363,20 +372,22 @@ static float32_t get_adaptive_calibration_this_result(void)
         for(int j = 0;j < (CalibrationPara.cal_col_num - i - 1); j++)
         {
             
-            if(CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + j] > CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + j + 1])
+            if(CalibrationPara.Temp_A[j] > CalibrationPara.Temp_A[j + 1])
             {
-                median_angle_H = CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + j];
-                CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + j] = CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + j + 1];
-                CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + j + 1] = median_angle_H;
+                median_angle_H = CalibrationPara.Temp_A[j];
+                CalibrationPara.Temp_A[j] = CalibrationPara.Temp_A[j + 1];
+                CalibrationPara.Temp_A[j + 1] = median_angle_H;
             }
         }
     }
-     median_angle_H = CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + 3];
+     median_angle_H = CalibrationPara.Temp_A[3];
     return median_angle_H;
 }
 
 static void adaptive_calibration_result_collection(void)
 {
+
+    //printf("22222222CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num = %d\n",CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num);
     float32_t TmpLinearAngle = 0;
     float32_t TmpLineareleAngle = 0;
 
@@ -384,19 +395,27 @@ static void adaptive_calibration_result_collection(void)
     {
             TmpLinearAngle = CalibrationPara.Adap_Angle;
             TmpLineareleAngle = CalibrationPara.Adap_eleAngle;
+
             CalibrationPara.Temp_A[CalibrationPara.cal_col_num] = TmpLinearAngle;
 
             CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num] = TmpLinearAngle;
+
+            CalibrationPara.cal_index = CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num; //当前标定次数
            // 
+            printf("CalibrationPara.realtime_cal_res[%d] = %f\n",CalibrationPara.cal_index,CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num]);
+            //printf("CalibrationPara.cal_index = %d\n",CalibrationPara.cal_index);
             CalibrationPara.cal_col_num += 1;
             
-
+    //printf("33333333CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num = %d\n",CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num);
             if(CalibrationPara.cal_col_num > ADAPTIVE_COUNTER)
             {
-                printf("CalibrationPara.cal_row_num = %d, CalibrationPara.cal_col_num = %d\n", CalibrationPara.cal_row_num, CalibrationPara.cal_col_num);
-                CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num] = get_adaptive_calibration_this_result();
-                printf("CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num] = %f\n",CalibrationPara.realtime_cal_res[CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num]);
-printf("\n");
+                if(CalibrationPara.Adap_Angle > 1.0f)
+                {
+                    printf("Calibration.yd = %f\n",CalibrationPara.Adap_B);
+                }
+                
+                CalibrationPara.real_cal_res_median[CalibrationPara.cal_row_num] = get_adaptive_calibration_this_result();
+               // printf("CalibrationPara.real_cal_res_median[%d] = %f\n",CalibrationPara.cal_row_num,CalibrationPara.real_cal_res_median[CalibrationPara.cal_row_num]);
                 CalibrationPara.cal_col_num = 0;
 
                 CalibrationPara.cal_row_num += 1;
@@ -440,14 +459,23 @@ void realtime_calibration_func(const or_point_cloud_format_t *PeakList)
         }
     }else
     {
+        printf("**************************************************\n");
         for (int row = 0; row < ROW; row++) {
             for (int col = 0; col < COL; col++) {
                 printf("%f  ", CalibrationPara.realtime_cal_res[row * COL + col]);
             }
             printf("\n");
         }
-        
+        printf("**************************************************\n");
+        for (int i = 0; i < ROW; i++)
+        {
+            printf("CalibrationPara.real_cal_res_median[%d] = %f\n",i,CalibrationPara.real_cal_res_median[i]);
+            /* code */
+        }
+        printf("**************************************************\n");
         CAL_MODE = CALIBRATION_EXIT;
         //已经标定了10次，进行后续处理
     }
+
+   //printf("111111CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num = %d\n",CalibrationPara.cal_row_num*COL + CalibrationPara.cal_col_num);
 }

@@ -12,7 +12,7 @@
 #define ADAPTIVE_MAX_AZIMUTH  55.0f
 #define ADAPTIVE_MIN_AZIMUTH  0.0f
 #define Calibration_MinRCs              15.0f//5//30//30//40//45//30
-#define Calibration_Ydata_gap                2.0f //1.5f//2.0f//1.0f//0.7f//1.0f//0.7f//1.0f//0.5f//1.0f
+#define Calibration_Ydata_gap                1.0f //1.5f//2.0f//1.0f//0.7f//1.0f//0.7f//1.0f//0.5f//1.0f
 /***************选点参数*******************/
 #define CLEAR_ANGLE 0
 #define NOT_CLEAR_ANGLE 1

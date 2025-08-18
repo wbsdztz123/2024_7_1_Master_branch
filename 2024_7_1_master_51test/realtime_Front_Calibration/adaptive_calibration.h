@@ -62,10 +62,10 @@
 #define X_DISTANCE_MIN                                       8.0f // X轴最小有效距离
 #define X_DISTANCE_MAX                                       65.0f // X轴最小有效距离
 #define YDATA_GAP_ADJUST                                     0.2f // Y轴间隙调整量
-#define Calibration_Ydata_gap                2.0f 
+#define Calibration_Ydata_gap                1.0f 
 
-#define ADAPTIVE_FRAME_NUM 18    //自适应标定帧数
-#define CALIBRATION_MIN_SAMPLES                              5 // 标定最小数据点数
+#define ADAPTIVE_FRAME_NUM 36    //自适应标定帧数
+#define CALIBRATION_MIN_SAMPLES                              3 // 标定最小数据点数
 
 #define CALIB_TIMEFRAME_HALF                                 (CALIBRATION_MIN_SAMPLES / 2 + 1)
 #define CALIB_FAIL_FRAME_THRESH                              (ADAPTIVE_FRAME_NUM / 18)
@@ -78,8 +78,8 @@
 
 #define ADAPTIVE_CAL_TIMEOUT_CYCLE (10 * 60 * 1000 * 1000u) /* 10min */
 
-#define ROW 10  //总标定次数
-#define COL 8  //单次标定结果  最后一次为筛选后的单次结果
+#define ROW 11  //总标定次数
+#define COL 7  //8筛选结果单独存放  //单次标定结果  最后一次为筛选后的单次结果
 
 
 typedef struct adaptive_calibrationpara //标定
@@ -94,8 +94,8 @@ typedef struct adaptive_calibrationpara //标定
     float32_t         Adap_eleAngle;
     float32_t         Adap_B; //自适应标定角度的截距
     float32_t         Adap_A; //拟合直线斜率
-    float32_t         Temp_A[ADAPTIVE_COUNTER];
-    float32_t         Temp_ele[ADAPTIVE_COUNTER];
+    float32_t         Temp_A[ADAPTIVE_COUNTER+1];
+    float32_t         Temp_ele[ADAPTIVE_COUNTER+1];
     float32_t         SteeringAngle;                      //存储标定开始时的方向盘转角
     float32_t         YawRate;                            //存储标定开始时的YawRate
     float32_t         Velocity;                           //存储标定开始时的车速
@@ -121,10 +121,14 @@ typedef struct adaptive_calibrationpara //标定
     uint8_t           Step;          //雷达标定的步骤
     calibration_adaptive_error_kind_t           errType;
 
-        uint8_t           cal_row_num;  //总标定次数    MAX < 10
-    uint8_t           cal_col_num;  //单次标定结果  最后一次为筛选后的单次结果  MAX <8
+    uint8_t           cal_row_num;  //总标定次数    行  MAX：11次标定
+    uint8_t           cal_col_num;  //单次标定结果  列  MAX：7 单次内部7次标定
 
-    float32_t realtime_cal_res[ROW*COL];
+    uint8_t           cal_index; //当前标定次数
+
+    float32_t realtime_cal_res[ROW*COL+1]; //所有标定值
+
+    float32_t real_cal_res_median[ROW];  //排序后的中位数
 
 
     //ADAPTIVE_WORKMODE adaptive_Workmode; //实时进度

@@ -15,14 +15,19 @@
 //初始化
 #define CalibrationTime       180       //一次标定的帧数，150代表150帧。
 #define Timeframe              7//8//7//7         //1帧数中有用的数据，5代表5个数据是有用数据。
-#define CalibrationRangeMin   3.0f//15//20//15//3//3    最小标定距离
-#define CalibrationRangeMid   30.0f     
-#define CalibrationRangeMax   40.0f//50.0f//40.0f//50//40//50//45//50//25//35//12//35       //最大标定距离35
-#define AdaptiveCalibration_OutputB       0      //自适应标定不输出B
-//#define AdaptiveCalibration_OutputB       1      //自适应标定输出B
+#define CalibrationRangeMin   8.0f//15//20//15//3//3    最小标定距离
 
-#define Calibration_MaxSteeringAngle    5.0f//10//20   
-#define Calibration_MaxYawRate          20.0f
+#define CalibrationRangeMax   65.0f//60.0f//40.0f//50.0f//40.0f//50//40//50//45//50//25//35//12//35       //最大标定距离35
+#define ADAPTIVE_MAX_AZIMUTH  55.0f
+#define ADAPTIVE_MIN_AZIMUTH  0.0f
+#define Calibration_MinRCs              15.0f//5//30//30//40//45//30
+#define Calibration_Ydata_gap                2.0f //1.5f//2.0f//1.0f//0.7f//1.0f//0.7f//1.0f//0.5f//1.0f
+/***************选点参数*******************/
+
+
+/***********车身姿态参数************************ */
+#define Calibration_MaxSteeringAngle    10.0f//5.0f//10//20   
+#define Calibration_MaxYawRate          0.8f
 #define Calibration_MinVelocity         4.0f
 #define Calibration_MaxVelocity         19.5f
 #define Calibration_MaxRoadCurve        300.0f
@@ -31,6 +36,15 @@
 #define PI                          3.14159265358979f
 //#define RadarInstallAngle            0.0f;
 //#define INSTALL_FRONT               0
+#define CALIBRATION_MIN_SAMPLES                              10 // 标定最小数据点数
+#define CALIB_TIMEFRAME_HALF                                 (CALIBRATION_MIN_SAMPLES / 2 + 1)
+#define CALIB_FAIL_FRAME_THRESH                              (ADAPTIVE_FRAME_NUM / 18)
+#define ADAPTIVE_FRAME_NUM 180    //自适应标定帧数
+#define SINGLE_DATA_AMOUNT  ADAPTIVE_FRAME_NUM * CALIBRATION_MIN_SAMPLES //单次标定的数据总量
+#define ADAPTIVE_COUNTER             6     //标定次数
+#define ADAPTIVE_RESULT_NUM             7   
+
+
 
 typedef signed char int8_t;
 typedef unsigned char   uint8_t;
@@ -94,36 +108,43 @@ typedef struct
 
 typedef struct TagCalibrationPara               //标定
 {
-    uint8_t      State;                         //标定状态    0x10, OfflineCalibration ,   0x20  AdaptiveCalibration
-    uint8_t      Step;                          //雷达标定的步骤
-    uint8_t      Master_Result;                 //主雷达标定结果    0为未标定，1为标定成功，2为标定失败
-    uint8_t      Error_Number;
+float32_t         xdata[SINGLE_DATA_AMOUNT]; //x是纵向距离
+    float32_t         ydata[SINGLE_DATA_AMOUNT]; //y是横向距离
+    float32_t         elevdata[SINGLE_DATA_AMOUNT];
+    float32_t         rangdata[SINGLE_DATA_AMOUNT];
+    float32_t         AveYdata;   //平均横向距离
+    float32_t         Adap_Angle; //自适应标定角度
+    float32_t         Adap_eleAngle;
+    float32_t         Adap_B; //自适应标定角度的截距
+    float32_t         Adap_A; //拟合直线斜率
+    float32_t         Temp_A[ADAPTIVE_RESULT_NUM];
+    float32_t         Temp_ele[ADAPTIVE_RESULT_NUM];
+    float32_t         SteeringAngle;                      //存储标定开始时的方向盘转角
+    float32_t         YawRate;                            //存储标定开始时的YawRate
+    float32_t         Velocity;                           //存储标定开始时的车速
+    
+    // float32_t         angle_buffer_h[ADAPTIVE_COUNTER];
+    // float32_t         angle_buffer_v[ADAPTIVE_COUNTER];
 
-    /***************自适应标定参数**********************/
-    uint8_t      Adaptive_step;                   //自适应标定步骤
-    uint8_t      Start;                         //标定开始标志
-    float32_t    SteeringAngle;                 //存储标定开始时的方向盘转角
-    float32_t    YawRate;                       //存储标定开始时的YawRate
-    float32_t    Velocity;                      //存储标定开始时的车速
-    uint8_t      Counter;                       //标定次数
-    uint16_t     Frame;                         //标定帧数
-    uint8_t      FalseFrame;                    //连续无目标的帧数
-    uint16_t     DataNum;                       //每次标定的数据数量
-    uint16_t     ChackDataNum;                  //验证需要的数据数量
-    float32_t    Xdata[CalibrationTime*Timeframe];    //x是纵向距离
-    float32_t    Ydata[CalibrationTime*Timeframe];    //y是横向距离
-    float32_t    AveYdata;                            //平均横向距离
-    float32_t    Adap_Angle;                      //自适应标定角度
-    float32_t    Adap_B;                              //自适应标定角度的截距
-    float32_t    Adap_A;                              //拟合直线斜率
-    float32_t    Temp_A[7];
-    uint8_t      TEMP_PB;               //进度标志
-    uint8_t      adaptive_PB;               //实时进度
-    /***************标定参数**********************/
-    uint8_t      Driving_Profile;//驾驶指导
-    uint8_t      errType;
-    uint16_t Calibration_Counter;
-    uint8_t Calibration_status;
+    // float32_t         apat_angle_h;             //水平角
+    // float32_t         apat_angle_v;             //俯仰角
+    calibration_adaptive_result_kind_t         adapt_result;        //结果
+
+    uint16_t          Frame;                              //标定帧数
+    uint16_t          Error_Number;  
+    uint16_t          DataNum;                            //每次标定的数据数量
+    uint16_t          ChackDataNum;                       //验证需要的数据数量
+    uint8_t           Counter;                            //标定次数
+    uint8_t           FalseFrame;                         //连续无目标的帧数
+    uint8_t           TEMP_PB;           //进度标志
+    uint8_t           adaptive_PB;       //实时进度
+    uint8_t           driving_profile;  
+    uint8_t           Step;          //雷达标定的步骤
+    uint8_t           Master_Result;                      //标定结果，0为未标定，1为标定成功，2为标定失败
+    uint8_t           Start;                  //标定结果，0为未标定，1为标定成功，2为标定失败
+
+    calibration_adaptive_error_kind_t           errType;
+
 }CalibrationParaS;
 
 /* Includes ------------------------------------------------------------------*/
