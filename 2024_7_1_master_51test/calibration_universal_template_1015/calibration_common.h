@@ -143,6 +143,7 @@ extern int32_t adaptive_flow_control_func(const or_point_cloud_format_t *PeakLis
 extern int32_t offline_flow_control_func(const or_point_cloud_format_t *PeakList);
 extern bool offline_start(void);
 extern int32_t offline_real_time_status_set_func(void);
+extern void ang_dopp_rang_snr_vel(float32_t angle,float32_t doppler,float32_t range,float32_t snr,float32_t vel);
 extern calibration_adaptive_result_content_t adap_result;
 extern offline_status_out_t offline_status_out;
 extern cal_extern_para_t calibration_extern_para;

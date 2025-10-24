@@ -93,6 +93,22 @@ void YD_XD_writing(float YD,float XD)
 
 }
 
+void ang_dopp_rang_snr_vel(float32_t angle,float32_t doppler,float32_t range,float32_t snr,float32_t vel)
+{   
+        FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
+    if (NULL == output_fp)
+    {
+        perror("open_output_file error");
+        return;
+    }
+    fprintf(output_fp,"%f\t%f\t%f\t%f\t%f\n",angle,doppler,range,snr,vel);
+    fflush(output_fp);
+    fclose(output_fp);
+
+}
+
+
+
 
 void Calibration_Required_data()
 {
@@ -222,10 +238,12 @@ void FILE_Read(void)
 void Data_reading_task(void)
 { 
         FILE_Read();
+        
 }
 
 void Calibration_runing_task(void)
 {
+
     while (1)
     {
         sem_wait(&semaphore1); //wait for the semaphore

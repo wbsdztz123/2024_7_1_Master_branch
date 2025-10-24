@@ -5,12 +5,15 @@
 
 #include "commapi.h"
 #include "calibration_common.h"
-#define MAX_STATIC_PEAK_NUM 50
-#define  RANSAC_THRESHOLD  0.08f // 内点筛选阈值
+#define MAX_STATIC_PEAK_NUM 400
+#define  RANSAC_THRESHOLD  0.2f // 内点筛选阈值
 
-#define MIN_INLIER_COUNT 20
-#define MIN_BEST_INLIER_COUNT 20
+#define MIN_INLIER_COUNT 80
+#define MIN_BEST_INLIER_COUNT 80
 
+#define CANDIDATE_ANGLE_NUM 21
+
+#define MAX_CANDIDATE_FRAME 300
 
 typedef enum{
     CAL_INIT = 0,
@@ -25,15 +28,18 @@ typedef struct static_point_t {
     float doppler;
     float range;
     float snr;
+    float residual;
 }static_peak_t;
 
 typedef struct adaptive_params_t {
-    uint8_t cal_step;
+    cal_step_t cal_step;
     uint16_t static_peak_num;
     uint8_t best_ca_index;
     float best_ca_angle;
     int16_t best_inlier_count;
+    uint16_t best_candidate_angle[CANDIDATE_ANGLE_NUM];
     float candidate_yaws;
+    uint16_t cal_frame;
 
 }adapt_params_t;
 
