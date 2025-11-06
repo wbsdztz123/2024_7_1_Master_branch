@@ -20,7 +20,7 @@
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
 
-#define FILE_PATH "C:\\Users\\zhujunnan\\Desktop\\NEW_CALIBRATION_temp_FILE\\17_43_12_580\\17_43_12_580\\Peak.csv"
+#define FILE_PATH "C:\\Users\\zhujunnan\\Desktop\\JETOUR\\17_47_39_025\\Peak.csv"
 
 void Output_file_clearing(char *output_filename);
 void Tag_write();

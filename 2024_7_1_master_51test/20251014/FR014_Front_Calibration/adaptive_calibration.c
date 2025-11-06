@@ -20,56 +20,69 @@ extern double  gModelParamK;
 #define LOG_WARN _3sradar_tui_print
 
 // extern int8_t Out_Put_Vehicle_List(uint8_t i);
-
-calib_adapt_format_t      adapt_format ={0};
-Point                     dataset[MAX_POINTS]; // 存储单帧所有数据点
+adaptive_calibrationparas CalibrationPara = {0};
+// calib_adapt_format_t      adapt_format ={0};
+// Point                     dataset[MAX_POINTS]; // 存储单帧所有数据点
 int                       total_points = 0;    // 实际数据点数量
 
 
-
-
-static void adaptive_data_clear(void);
-static int32_t adaptive_wokemode_check(void);
-static int32_t adaptive_init(void);
-static bool body_posture_detection(void);
-//static uint8_t CAL_Target_Filtering(const or_point_cloud_term_t *term);
-uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint8_t i);
-static uint8_t Range_Density_Analysis(const or_point_cloud_format_t *PeakList);
-static void calibration_init_process(const or_point_cloud_format_t *PeakList);
-static bool Target_Filtering_Check(const or_point_cloud_term_t *term, uint8_t zone);
-static void update_calibration_progress(uint8_t step, uint8_t offset);
-static void activate_calibration(void);
-static bool is_valid_calibration_range(float y_data);
-void calibration_data_collection(const or_point_cloud_format_t *PeakList);
-static void store_calibration_data(Point3D point, float range);
-static void adaptive_data_volume_judg(void);
-void calibration_adaptive_polyfit(void);
-void calibration_adaptive_finish(void);
-static void calibration_result_write(void);
-static void calibration_result_read(void);
-static void calibration_adaptive_end(void);
-static void adaptive_result_set(calibration_adaptive_result_kind_t result,calibration_adaptive_error_kind_t error_type,float angle_h,float angle_v);
-
-
-
-
-
-
-
-bool adaptive_start()
+uint8_t AdaptiveCalStart(void)
 {
-        memset(&adapt_format, 0, sizeof(calib_adapt_format_t));
+    #define CALIBRATION_ROUTINE_STARTS 0x00
+    #define CALIBRATION_ROUTINE_RUNNING 0x01
+    #define CALIBRATION_ROUTINE_FAIL 0x02
 
-    //memset(&offline_status_out, 0, sizeof(offline_status_out));
-    if (1) {
-        adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_START;
-        adapt_format.adaptve_calibrationpara.adapt_result = CALIBRATION_ADAPTIVE_IN_PROGRESS;
-        return true;
+    uint8_t result = CALIBRATION_ROUTINE_FAIL;
+    uint16_t i;
+    // const radar_work_mode_t radar_data = WORKIN_MODE_ADAPTIVE_CALIBRATION;
+    //CalibrationPara.adaptive_Workmode = ADAPTIVE_MODE;
+    CalibrationPara.Start = 0;
+    CalibrationPara.Step = 1;
+    // CalibrationPara.Master_Result = UNCALIBRATED;
+    //CalibrationPara.Error_Number = 0;
+    //CalibrationPara.Effective_point = 0;
+    CalibrationPara.SteeringAngle = 0;
+    CalibrationPara.YawRate = 0;
+    CalibrationPara.Velocity = 0;
+    CalibrationPara.Counter = 0;
+    CalibrationPara.Frame = 0;
+    CalibrationPara.FalseFrame = 0;
+    CalibrationPara.DataNum = 0;
+    CalibrationPara.AveYdata = 0;
+    CalibrationPara.Adap_A = 0;
+    CalibrationPara.Adap_B = 0;
+    CalibrationPara.errType =0;
+    CalibrationPara.driving_profile = 0;//驾驶指导初始化
+    
+    CalibrationPara.adaptive_PB = 0; //实时进度
+    CalibrationPara.TEMP_PB = 0;  //固定进度
+    //CalibrationPara.Adaptive_step = 0; // zjn test
+    // if(_atomic_load(RadarPara.WorkMode, radar_work_mode_t) == WORKIN_MODE_NONTRI_CALIBRATION)
+    // {
+    //    // 
+    // }else{
+    //     AdaptiveCalClockLaunch(ADAPTIVE_CAL_TIMEOUT_CYCLE);
+    // }
+    for (i = 0; i < SINGLE_DATA_AMOUNT; i++)
+    {
+        CalibrationPara.xdata[i] = 0;
+        CalibrationPara.ydata[i] = 0;
     }
-    return false;
+    CalibrationPara.Adap_Angle = 0;
 
+    if (CalibrationPara.Step == 1)
+    {
+        RadarPara.TempHorizontalAdptiveAngle = RadarPara.FarHorizontalAdptiveAngle;
+        RadarPara.TempVerticalAdptiveAngle =  RadarPara.FarVerticalAdptiveAngle;
+        CalibrationPara.Adap_eleAngle = 0;
+        RadarPara.FarVerticalAdptiveAngle = 0;   // 远区自适应垂直角度清零
+    }
+
+    // if (!switching_mode_debug(WORKIN_MODE_ADAPTIVE_CALIBRATION)) {
+    //     result = CALIBRATION_ROUTINE_STARTS;
+    // }
+    return result;
 }
-
 
 /* 函数名：AdaptiveCalTimeoutProc()
  * 描述：售后校准超时回调函数
@@ -77,11 +90,22 @@ bool adaptive_start()
  *       argv: 传入参数
  * 返回值：NA
  */
-
 // static void AdaptiveCalTimeoutProc(ClockP_Object *clock, void *argv)
 // {
-
-//     //adaptive_result_set(CALIBRATION_ADAPTIVE_IS_FAIL,CALIBRATION_ADAPTIVE_IN_TIMEOUT,adapt_format.adaptve_calibrationpara.apat_angle_h,adapt_format.adaptve_calibrationpara.apat_angle_v);
+//     //_3sradar_tui_print("AdaptiveCalTimeoutProc++\r\n");
+//     uint8_t StatusArray[6] = {0};
+//     CalibrationPara.errType = CALIBRATION_ADAPTIVE_IN_TIMEOUT;
+//     CalibrationPara.Master_Result = CALIBRATION_IS_FAILED;
+    
+//      StatusArray[0] = CALIBRATION_NOT_COMPLETED;
+//      StatusArray[1] = CALIBRATION_ADAPTIVE_IN_TIMEOUT;
+//      StatusArray[2] = (((int16_t)(RadarPara.FarHorizontalAdptiveAngle * 100)) >> 8) & 0xFF;
+//      StatusArray[3] = ((int16_t)(RadarPara.FarHorizontalAdptiveAngle * 100)) & 0xFF;
+//      StatusArray[4] = (((int16_t)(RadarPara.FarVerticalOffsetAngle * 100)) >> 8) & 0xFF;
+//      StatusArray[5] =((int16_t)(RadarPara.FarVerticalOffsetAngle * 100)) & 0xFF;
+//      Adaptive_Calibration_Exit(StatusArray);
+//      //SetDtcMissCal_0x9ED554(TRUE);
+     
 // }
 
 
@@ -93,295 +117,802 @@ bool adaptive_start()
  *      ClockP_stop(adaptive_cal_clock);
  *      ClockP_destruct(adaptive_cal_clock);
  */
-void AdaptiveCalClockLaunch(uint64_t period)
+// void AdaptiveCalClockLaunch(uint64_t period)
+// {
+//     ClockP_Params clock_params;
+
+//     ClockP_Params_init(&clock_params);
+//     clock_params.timeout = ClockP_usecToTicks(period);
+//     clock_params.start = 1;
+//     clock_params.callback = &AdaptiveCalTimeoutProc;
+//     clock_params.args = NULL;
+
+//     ClockP_construct(&adaptive_cal_clock, &clock_params);
+// }
+/* 函数名: GetAdaptiveCalStatus()
+ * 描述：获取售后校准状态
+ * 返回值：StatusArray
+ *        byte 0: 标定结果 (0x00=标定成功, 0x01=标定进行中, 0x02=标定失败, 0x03=用户终止, 0x04~0xFE=预留, 0xFF=标定未开始)
+ *        byte 1: 标定进度 (范围 0~100)
+ *        byte 2: 标定失败原因 (0x00=标定成功, 0x01=标定超时, 0x02=角度偏差过大, 0x03=NVM写入错误, 
+ *                             0x04=用户终止, 0x05=SDA 校准失败, 0x06~0xFE=预留, 0xFF=标定未开始)
+ *        byte 3~4: 水平角度误差值 (Resolution=0.01, Offset=0) 
+ *                  Data[3] = (HorizontalAngle >> 8) & 0xFF;
+ *                  Data[4] = HorizontalAngle & 0xFF;
+ *        byte 5~6: 垂直角度误差值 (Resolution=0.01, Offset=0)
+ *                  Data[5] = (VerticalAngle >> 8) & 0xFF;
+ *                  Data[6] = VerticalAngle & 0xFF;
+ *        byte 7: 保留
+ */
+// void GetAdaptiveCalStatus(uint8_t * StatusArray)
+// {
+//     int16_t TempFarHorizontalAdptiveAngle, TempFarVerticalAdptiveAngle;
+    
+//     if (CalibrationPara.Master_Result == CALIBRATION_IS_SUCCESS || CalibrationPara.errType == CALIBRATION_ADAPTIVE_IS_ANGLE_OVERSHOOT) {
+//         TempFarHorizontalAdptiveAngle = (int16_t)((RadarPara.FarHorizontalAdptiveAngle + RadarPara.FarHorizontalOffsetAngle) * 100);
+//         TempFarVerticalAdptiveAngle = (int16_t)((RadarPara.FarVerticalAdptiveAngle + RadarPara.FarVerticalOffsetAngle) * 100);
+//     } else {
+//         TempFarHorizontalAdptiveAngle = 0;
+//         TempFarVerticalAdptiveAngle   = 0;
+//     }
+
+
+
+//     // if(!CalibrationPara.Master_Result){
+//     //    *StatusArray  = CALIBRATION_ADAPTIVE_IN_PROGRESS;
+      
+//     // }else if(CalibrationPara.Master_Result == CALIBRATION_IS_SUCCESS){
+//     //    *StatusArray  = CALIBRATION_ADAPTIVE_IS_SUCCESSFUL; 
+//     // }else if(CalibrationPara.Master_Result == CALIBRATION_IS_FAILED)
+//     // {
+//     //     *StatusArray  = CALIBRATION_ADAPTIVE_IS_FAIL;
+//     // }
+    
+//     *(StatusArray + 1) = CalibrationPara.adaptive_PB; 
+//     *(StatusArray + 2) = CalibrationPara.errType;
+
+//     *(StatusArray + 3) = (uint8_t)((TempFarHorizontalAdptiveAngle >> 8) & 0xFF);
+//     *(StatusArray + 4) = (uint8_t)(TempFarHorizontalAdptiveAngle & 0xFF);
+//     *(StatusArray + 5) = (uint8_t)((TempFarVerticalAdptiveAngle >> 8) & 0xFF);
+//     *(StatusArray + 6) = (uint8_t)(TempFarVerticalAdptiveAngle & 0xFF);
+//     *(StatusArray + 7) = 0x00;
+
+// }
+
+
+void Adaptive_CalibrationClear(void)
 {
-    
-    // ClockP_Params clock_params;
+        uint16_t i;
+        CalibrationPara.Start = 0;
+        CalibrationPara.SteeringAngle = 0;
+        CalibrationPara.YawRate = 0;
+        CalibrationPara.Velocity = 0;
+        CalibrationPara.Frame = 0;
+        CalibrationPara.FalseFrame = 0;
+        CalibrationPara.DataNum = 0;
+        CalibrationPara.AveYdata = 0;
+        CalibrationPara.Adap_A = 0;
+        CalibrationPara.Adap_B = 0;
 
-    // ClockP_Params_init(&clock_params);
-    // clock_params.timeout  = ClockP_usecToTicks(period);
-    // clock_params.start    = 1;
-    // clock_params.callback = &AdaptiveCalTimeoutProc;
-    // clock_params.args     = NULL;
+        CalibrationPara.TEMP_PB = 0;  //标定进度清零
 
-    // ClockP_construct(&adaptive_cal_clock, &clock_params);
-    
+        for (i = 0; i < SINGLE_DATA_AMOUNT; i++)
+        {
+            CalibrationPara.xdata[i] = 0;
+            CalibrationPara.ydata[i] = 0;
+        }
+        CalibrationPara.Adap_Angle = 0;
+        CalibrationPara.Adap_eleAngle = 0;
+        CalibrationPara.errType =0;
+        CalibrationPara.driving_profile = 0;
+
+
 }
 
-void adaptive_real_time_status_set_func(void)
+
+void Adaptive_Calibration(const or_point_cloud_format_t *PeakList)
 {
-    adap_status_out.output_result = adapt_format.adaptve_calibrationpara.adapt_result;
-    adap_status_out.output_progress = adapt_format.adaptve_calibrationpara.adaptive_PB;
-    adap_status_out.output_cause_of_failure = adapt_format.adaptve_calibrationpara.errType;
-    if((adapt_format.adaptve_calibrationpara.errType == CALIBRATION_ADAPTIVE_IS_SUCCESSFUL) || (adapt_format.adaptve_calibrationpara.errType == CALIBRATION_ADAPTIVE_IS_ANGLE_OVERSHOOT))
+    printf("peak_point_count:%d\n", PeakList->point_count);
+    uint8_t tempProgress;
+    
+    Adaptive_CalibrationSaveData(PeakList); // 保存数据
+
+    if (CalibrationPara.FalseFrame > (ADAPTIVE_FRAME_NUM / 10))
     {
-        adap_status_out.output_adapt_angle_h = adapt_format.adaptve_calibrationpara.apat_angle_h;
-        adap_status_out.output_adapt_angle_v = adapt_format.adaptve_calibrationpara.apat_angle_v;
+        //CalibrationPara.Adaptive_step = 7; //zjn test
+
+        Adaptive_CalibrationClear(); // 标定放弃
+        CalibrationPara.driving_profile = 0x10; // 目标不充分
+    }
+    else if (CalibrationPara.Frame >= ADAPTIVE_FRAME_NUM || CalibrationPara.DataNum >= SINGLE_DATA_AMOUNT)
+    {
+        //CalibrationPara.Adaptive_step = 8; //zjn test
+        tempProgress = CalibrationPara.Counter * PROGRESS_STEP + 10;
+        //CalibrationPara.Adaptive_Check_step = 3;
+        Calibration_Progress(tempProgress);
+
+        if (CalibrationPara.DataNum >= (SINGLE_DATA_AMOUNT * 3 / 5))
+        {
+            //CalibrationPara.Adaptive_step = 9; //zjn test
+
+            Adaptive_CalibrationPolyFit(); // 线性回归拟合
+            Adaptive_CalibrationFinish();
+        }
+        else
+        {
+            //CalibrationPara.Adaptive_step = 10; //zjn test
+
+            Adaptive_CalibrationClear(); // 标定放弃
+            CalibrationPara.driving_profile = 0x10; // 目标不充分
+        }
     }
 }
 
 
+// 数据保存
+void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
+{
+    uint8_t  flag;
+    uint8_t  Calibration_flag;
+    uint32_t i;
+    uint32_t  Start_num = 0;
+    //float32_t tmpCalibrationRange;
+    float32_t temp_speed_gap = 0xff;
+    float32_t temp_Ydata;
+    uint8_t   rang_flag = 0;
+    uint8_t   tempProgress;
+    flag         = Body_Posture_Detection(); //车身姿态检测
+    tempProgress = CalibrationPara.Counter * PROGRESS_STEP;
+    tempProgress += 2;
+    Calibration_Progress(tempProgress);
+
+
+#ifdef _CALIBRATION_DEBUG_
+
+    int32_t tmp_data;
+    uint8_t data[8] = {0};
+
+    tmp_data = (int32_t)((Message_VehicleMsg.CurveRadius) * 10);
+    data[0]  = (uint8_t)((tmp_data >> 16) & 0xFF);
+    data[1]  = (uint8_t)((tmp_data >> 8) & 0xFF);
+    data[2]  = (uint8_t)(tmp_data & 0xFF);
+
+    tmp_data = (int32_t)((Message_VehicleMsg.SteeringAngle) * 10);
+    data[3]  = (uint8_t)((tmp_data >> 16) & 0xFF);
+    data[4]  = (uint8_t)((tmp_data >> 8) & 0xFF);
+    data[5]  = (uint8_t)(tmp_data & 0xFF);
+    data[6]  = flag;
+    Private_Can_CalibrtionDebug(0x710, data, 7);
+
+#endif
+
+    if (flag) // 车辆处于可以标定的状态，进行标定
+    {
+        CalibrationPara.Error_Number = 0; // 车速、档位、转弯正确，则时间清零。
+
+
+        if (CalibrationPara.Start == 0) // 没有开始标定
+        {
+            CalibrationPara.AveYdata = 0;
+            rang_flag                = Rang_judge(PeakList); // 判断栅栏距离
+printf("rang_flag:%d\n",rang_flag);
+            float lower_bound, upper_bound;
+            switch (rang_flag) {
+            case 2:
+                lower_bound = 2.0f;
+                upper_bound = 4.2f;
+                break;
+            case 1:
+                lower_bound = 0.5f;
+                upper_bound = 2.2f;
+                break;
+            default:
+                lower_bound = 3.9f;
+                upper_bound = 7.0f;
+                break;
+            }
+
+            for (i = 0; i < PeakList->point_count; i++) // 读取车辆旁边障碍物的位置，存储数据
+            {
+                Calibration_flag = CAL_Target_Filtering(PeakList, i);
+
+                if (Calibration_flag && rang_flag) {
+                    float azimuth = PeakList->term[i].azimuth * 180 / PI;
+                    if(INSTALL_DIRECTION)
+                    {
+                        temp_Ydata    = PeakList->term[i].range * sin((RadarPara.InstallAngle - azimuth) * PI / 180);
+                    }else
+                    {
+                        temp_Ydata    = PeakList->term[i].range * sin((RadarPara.InstallAngle + azimuth) * PI / 180);
+                    }
+                    
+
+                    if (temp_Ydata > lower_bound && temp_Ydata < upper_bound)
+                    {
+                        Start_num++;
+                        CalibrationPara.AveYdata += temp_Ydata;
+                    }
+                }
+            }
+
+
+            tempProgress = CalibrationPara.Counter * PROGRESS_STEP;
+            tempProgress += 5;
+            Calibration_Progress(tempProgress);
+
+            if (Start_num >= CALIBRATION_MIN_SAMPLES) {
+                CalibrationPara.AveYdata = CalibrationPara.AveYdata / Start_num;
+                if ((CalibrationPara.AveYdata > 0.5f) && (CalibrationPara.AveYdata < 7.0f)) //3.0-4.0-4.5-5.0-6.0-8.0
+                {
+                    CalibrationPara.Start = 1;
+                    CalibrationPara.SteeringAngle = Message_VehicleMsg.SteeringAngle; // 存储标定开始的方向盘转角
+                    CalibrationPara.Velocity = KMH_TO_MS(Message_VehicleMsg.Velocity); // 存储标定开始的车速
+
+
+#ifdef _CALIBRATION_DEBUG_
+
+                    tmp_data = (int32_t)((CalibrationPara.SteeringAngle) * 10);
+                    data[0]  = (uint8_t)((tmp_data >> 16) & 0xFF);
+                    data[1]  = (uint8_t)((tmp_data >> 8) & 0xFF);
+                    data[2]  = (uint8_t)(tmp_data & 0xFF);
+
+                    tmp_data = (int32_t)((CalibrationPara.AveYdata) * 10);
+                    data[3]  = (uint8_t)((tmp_data >> 16) & 0xFF);
+                    data[4]  = (uint8_t)((tmp_data >> 8) & 0xFF);
+                    data[5]  = (uint8_t)(tmp_data & 0xFF);
+                    data[6]  = 0xFF;
+                    Private_Can_CalibrtionDebug(0x711, data, 7);
+
+#endif
+                    tempProgress = CalibrationPara.Counter * PROGRESS_STEP;
+                    tempProgress += 8;
+                    Calibration_Progress(tempProgress);
+
+                    //CalibrationPara.Adaptive_step = 1; //zjn test
+                } else {
+                    //CalibrationPara.Adaptive_step = 2; //zjn test
+                    //CalibrationPara.Start = 2;      //单帧点符合但是栅栏横向距离不符合
+                    Adaptive_CalibrationClear(); // 标定放弃
+                    //CalibrationPara.errType = 0x06;
+                    CalibrationPara.driving_profile = 0x10; //目标不充分
+#ifdef _CALIBRATION_DEBUG_
+
+                    data[0] = 0xFF;
+                    data[1] = 0xFF;
+                    data[2] = 0xFF;
+                    data[3] = 0xFF;
+                    data[4] = 0xFF;
+                    data[5] = 0xFF;
+                    data[6] = 0xFF;
+                    Private_Can_CalibrtionDebug(0x712, data, 7);
+
+#endif
+                }
+            } else {
+                //CalibrationPara.Adaptive_step = 3; //zjn test
+                //CalibrationPara.Start = 2;     //单帧点不符合
+                Adaptive_CalibrationClear(); // 标定放弃
+                //CalibrationPara.errType = 0x06;
+                CalibrationPara.driving_profile = 0x10; //目标不充分
+#ifdef _CALIBRATION_DEBUG_
+
+                data[0] = 0xFF;
+                data[1] = 0xFF;
+                data[2] = 0xFF;
+                data[3] = 0xFF;
+                data[4] = 0xFF;
+                data[5] = 0xFF;
+                data[6] = 0xFF;
+                Private_Can_CalibrtionDebug(0x713, data, 7);
+                /*******debug*****/
+#endif
+            }
+
+        } else // 已经开始标定
+        {
+            if ((fabs(Message_VehicleMsg.SteeringAngle - CalibrationPara.SteeringAngle) < 3.0f) //5//6//10// 方向盘转角偏差小于10才行。
+                && (fabs((KMH_TO_MS(Message_VehicleMsg.Velocity)) - CalibrationPara.Velocity) < 3.0f)) // 3
+            {
+                float X = 0.0f;
+                float Y = 0.0f;
+                Start_num = 0;
+                for (i = 0; i < PeakList->point_count; i++) {
+                    Calibration_flag = CAL_Target_Filtering(PeakList, i);
+
+                    if (Calibration_flag) {
+                        float azimuth_deg = PeakList->term[i].azimuth * 180 / PI;
+                        if(INSTALL_DIRECTION)
+                        {
+                            X = PeakList->term[i].range * cos((RadarPara.InstallAngle - azimuth_deg) * PI / 180);
+                            Y = PeakList->term[i].range * sin((RadarPara.InstallAngle - azimuth_deg) * PI / 180);
+                        }else
+                        {
+                            X = PeakList->term[i].range * cos((RadarPara.InstallAngle + azimuth_deg) * PI / 180);
+                            Y = PeakList->term[i].range * sin((RadarPara.InstallAngle + azimuth_deg) * PI / 180);
+                        }
+
+
+                        if (CalibrationPara.AveYdata < 2.2f) {
+                            if (CalibrationPara.DataNum < SINGLE_DATA_AMOUNT
+                                && Y > (CalibrationPara.AveYdata - (Calibration_Ydata_gap - 0.2))
+                                && Y < (CalibrationPara.AveYdata + (Calibration_Ydata_gap - 0.2)) && X > 8.0f) {
+                                CalibrationPara.xdata[CalibrationPara.DataNum] = X;
+                                CalibrationPara.ydata[CalibrationPara.DataNum] = Y;
+                                CalibrationPara.DataNum++;
+                                Start_num++;
+                            }
+                        } else {
+                            if (CalibrationPara.DataNum < SINGLE_DATA_AMOUNT
+                                && Y > (CalibrationPara.AveYdata - Calibration_Ydata_gap)
+                                && Y < (CalibrationPara.AveYdata + Calibration_Ydata_gap) && X > 8.0f) {
+                                CalibrationPara.xdata[CalibrationPara.DataNum] = X;
+                                CalibrationPara.ydata[CalibrationPara.DataNum] = Y;
+                                CalibrationPara.DataNum++;
+                                Start_num++;
+                            }
+                        }
+                    }
+                }
+
+
+                CalibrationPara.Frame++; // 帧数+1
+                if (Start_num <= (CALIBRATION_MIN_SAMPLES / 2 + 1)) {
+                        CalibrationPara.FalseFrame++; // 连续无目标的帧数
+
+                    if (CalibrationPara.FalseFrame > (ADAPTIVE_FRAME_NUM / 18)) //10
+                    {
+                        //CalibrationPara.Adaptive_step = 5; //zjn test
+                        Adaptive_CalibrationClear();       // 标定放弃
+                        //CalibrationPara.errType = 0x06;
+                        CalibrationPara.driving_profile = 0x10; //目标不充分
+                    }
+#ifdef _CALIBRATION_DEBUG_
+
+                    data[0] = 0xFF;
+                    data[1] = 0xFF;
+                    data[2] = 0xFF;
+                    data[3] = 0xFF;
+                    data[4] = 0xFF;
+                    data[5] = 0xFF;
+                    data[6] = 0xFF;
+                    Private_Can_CalibrtionDebug(0x715, data, 7);
+
+#endif
+                } else {
+                    CalibrationPara.FalseFrame = 0;
+#ifdef _CALIBRATION_DEBUG_
+
+                    data[0] = 0xFF;
+                    data[1] = 0xFF;
+                    data[2] = 0xFF;
+                    data[3] = 0xFF;
+                    data[4] = 0xFF;
+                    data[5] = 0xFF;
+                    data[6] = 0xFF;
+                    Private_Can_CalibrtionDebug(0x716, data, 7);
+
+#endif
+                }
+            } else {
+                Adaptive_CalibrationClear(); // 标定放弃
+
+                //CalibrationPara.Adaptive_step = 6;                                                  //zjn test
+                if (fabs(Message_VehicleMsg.SteeringAngle - CalibrationPara.SteeringAngle) > 10.0f) //横摆角速度过大
+                {
+                    CalibrationPara.driving_profile = 0x04;
+                } else if (fabs((KMH_TO_MS(Message_VehicleMsg.Velocity)) - CalibrationPara.Velocity) > 3.0f) //纵向加速度过大
+                {
+                    CalibrationPara.driving_profile = 0x08;
+                }
+
+                //CalibrationPara.errType = 0x06;
+#ifdef _CALIBRATION_DEBUG_
+
+                data[0] = 0xFF;
+                data[1] = 0xFF;
+                data[2] = 0xFF;
+                data[3] = 0xFF;
+                data[4] = 0xFF;
+                data[5] = 0xFF;
+                data[6] = 0xFF;
+                Private_Can_CalibrtionDebug(0x713, data, 7);
+#endif
+            }
+        }
+    } else {
+        CalibrationPara.Error_Number++; // 车速、档位、转弯半径不对的时候，不进行标定
+        Adaptive_CalibrationClear();    // 标定放弃
+                                        // if (CalibrationPara.Error_Number > 500) // 30s时间
+                                        // {
+        //     if((Message_VehicleMsg.Velocity/3.6f) < Calibration_MinVelocity) //车速过低
+        //     {
+        //         CalibrationPara.Driving_Profile = 0x01;
+        //     }
+        //     else if((Message_VehicleMsg.Velocity/3.6f) > Calibration_MaxVelocity)//车速过高
+        //     {
+        //         CalibrationPara.Driving_Profile = 0x02;
+        //     }
+        //     else if(fabs(Message_VehicleMsg.SteeringAngle) > Calibration_MaxSteeringAngle)//横摆角速度过大
+        //     {
+        //         CalibrationPara.Driving_Profile = 0x04;
+        //     }
+        //     CalibrationPara.TEMP_PB = 0;   //失败进度清0
+        //     //CalibrationPara.errType = 0x06;  //车辆信号不满足
+        //}
+#ifdef _CALIBRATION_DEBUG_
+
+        data[0] = 0xFF;
+        data[1] = 0xFF;
+        data[2] = 0xFF;
+        data[3] = 0xFF;
+        data[4] = 0xFF;
+        data[5] = 0xFF;
+        data[6] = 0xFF;
+        Private_Can_CalibrtionDebug(0x718, data, 7);
+
+#endif
+    }
+}
+
+
+void Adaptive_CalibrationPolyFit(void)
+{
+    float32_t sum_x2 = 0;
+    float32_t sum_y  = 0;
+    float32_t sum_x  = 0;
+    float32_t sum_xy = 0;
+    uint32_t  i      = 0;
+    float32_t a;
+    float32_t b;
+
+    for (i = 0; i < CalibrationPara.DataNum; i++) 
+    {
+        float32_t x = CalibrationPara.xdata[i];
+        float32_t y = CalibrationPara.ydata[i];
+
+        sum_x2 += x * x;
+        sum_y += y;
+        sum_x += x;
+        sum_xy += x * y;
+    }
+
+    float32_t denominator = CalibrationPara.DataNum * sum_x2 - sum_x * sum_x;
+
+    a = (CalibrationPara.DataNum * sum_xy - sum_x * sum_y) / denominator;
+    b = (sum_x2 * sum_y - sum_x * sum_xy) / denominator;
+
+    CalibrationPara.Adap_B     = b;
+    CalibrationPara.Adap_A     = a;
+    CalibrationPara.Adap_Angle = atan(a) * 180 / PI;
+
+#ifdef _CALIBRATION_DEBUG_
+
+        int32_t  tmp_data;
+        uint8_t data[8] = {0};   
+    
+        tmp_data = (int32_t)((CalibrationPara.Adap_Angle) * 10);
+        data[0] = (uint8_t)((tmp_data >> 16) & 0xFF);
+        data[1] = (uint8_t)((tmp_data >> 8) & 0xFF);
+        data[2] = (uint8_t)(tmp_data & 0xFF);
+
+        tmp_data = (int32_t)((CalibrationPara.Adap_B) * 10);
+        data[3] = (uint8_t)((tmp_data >> 16) & 0xFF);
+        data[4] = (uint8_t)((tmp_data >> 8) & 0xFF);
+        data[5] = (uint8_t)(tmp_data & 0xFF);
+        data[6] = 0xFF;
+        Private_Can_CalibrtionDebug(0x719,data,7);
+    /*******debug*****/
+#endif
+}
 
 
 
+
+void Adaptive_CalibrationFinish(void)
+{
+    #define ADAPTIVE_PROGRESS_FINISH  100
+    uint8_t tempProgress;
+    /*debug*/
+    int8_t   errcode = 0;
+    uint8_t StatusArray[9] = {0};
+    /*debug*/
+
+    float32_t TmpLinearAngle = 0;
+    float32_t TmpLineareleAngle = 0;
+    if ((CalibrationPara.Adap_B > 0.5f) && (CalibrationPara.Adap_B < 7.0f)) //(b > 1.3f)  &&  (b < 2.8f))  3.5-4.0-4.5-5.0-6.0
+    {
+        if (CalibrationPara.Step == 1)
+        {
+            TmpLinearAngle = CalibrationPara.Adap_Angle;
+            TmpLineareleAngle = CalibrationPara.Adap_eleAngle;
+
+            tempProgress = CalibrationPara.Counter * PROGRESS_STEP;
+            tempProgress += PROGRESS_STEP;
+            Calibration_Progress(tempProgress);
+        }
+
+        // if (fabs(TmpLinearAngle) < 7)
+        // {
+            CalibrationPara.Temp_A[CalibrationPara.Counter++] = TmpLinearAngle;
+            if( CalibrationPara.Counter > ADAPTIVE_COUNTER)
+            {
+                for(int i = 0; i < (CalibrationPara.Counter ) ; i++)
+                {
+                    for(int j = 0;j < (CalibrationPara.Counter - i - 1); j++)
+                    {
+                        if(CalibrationPara.Temp_A[j] > CalibrationPara.Temp_A[j + 1])
+                        {
+                            TmpLinearAngle = CalibrationPara.Temp_A[j];
+                            CalibrationPara.Temp_A[j] = CalibrationPara.Temp_A[j + 1];
+                            CalibrationPara.Temp_A[j + 1] = TmpLinearAngle;
+                        }
+                    }
+                }
+                if (CalibrationPara.Step == 1)
+                {
+                    if(INSTALL_DIRECTION)
+                    {
+                        TmpLinearAngle = CalibrationPara.Temp_A[3];
+                    }else
+                    {
+                        TmpLinearAngle = -CalibrationPara.Temp_A[3];
+                    }
+                    
+                    if(RadarPara.InstallPosition == INSTALL_LEFT_BACK)
+                    {
+                        TmpLinearAngle += 0.0f;//0.80f;
+                    }else if(RadarPara.InstallPosition == INSTALL_RIGHT_BACK)
+                    {
+                        TmpLinearAngle += 0.0f;//1.52f;
+                    }
+                    RadarPara.FarHorizontalAdptiveAngle= TmpLinearAngle - RadarPara.FarHorizontalOffsetAngle;
+                    RadarPara.FarVerticalAdptiveAngle = RadarPara.FarVerticalOffsetAngle;
+                    RadarPara.TempHorizontalAdptiveAngle = RadarPara.FarHorizontalAdptiveAngle;
+                    RadarPara.TempVerticalAdptiveAngle = RadarPara.FarVerticalOffsetAngle;
+                }
+
+                if (CalibrationPara.Step == 1)
+                {
+                    tempProgress = ADAPTIVE_PROGRESS_FINISH;
+                    Calibration_Progress(tempProgress);
+                    CalibrationPara.Step = 3;          // 标定完成
+                    
+                    CalibrationPara.driving_profile = 0x00;
+                    StatusArray[0] = 0x00;
+                    StatusArray[1] = 0x00;
+                    StatusArray[2] = (((int16_t)(RadarPara.FarHorizontalAdptiveAngle * 100)) >> 8) & 0xFF;
+                    StatusArray[3] = ((int16_t)(RadarPara.FarHorizontalAdptiveAngle * 100)) & 0xFF;
+                    StatusArray[4] = (((int16_t)(RadarPara.FarVerticalAdptiveAngle * 100)) >> 8) & 0xFF;
+                    StatusArray[5] =((int16_t)(RadarPara.FarVerticalAdptiveAngle * 100)) & 0xFF;
+
+                    //Adaptive_Calibration_Exit(StatusArray);
+                    
+                    //     if((fabs(TmpLinearAngle) >= (CALIBRATION_TOLERANCE + EPSILON ))||(fabs(TmpLineareleAngle) >= (CALIBRATION_ELEVTOLERANCE + EPSILON)))
+                    // {
+                    //     StatusArray[0] = 0x00;
+                    //     StatusArray[1] = 0x02;
+                        
+                    //     //SetDtcCalOutOfRange_0x9ED546(TRUE);
+                    //     //SetDtcMissCal_0x9ED554(TRUE);
+                    //         CalibrationPara.Master_Result = CALIBRATION_IS_FAILED; // 雷达标定结果为失败
+                    //     CalibrationPara.errType = 0x02;
+                    // }else{
+					// 		StatusArray[0] = CALIBRATION_COMPLETED;
+                    //         CalibrationPara.Master_Result = CALIBRATION_IS_SUCCESS; // 雷达标定结果为成功
+                    //     //SetDtcCalOutOfRange_0x9ED546(FALSE);
+                    //     //SetDtcCalOutOfRange_0x9ED955(FALSE);
+                    //     //SetDtcMissCal_0x9ED554(FALSE);
+                    // }
+                    // Adaptive_Calibration_Exit(StatusArray);
+                    // Config_WriteAllConfig();
+                    
+                    
+#ifdef _CALIBRATION_DEBUG_
+                    int32_t tmp_data;
+                    uint8_t data[8] = {0};
+
+
+                    tmp_data = (int32_t)((RadarPara.FarHorizontalAdptiveAngle) * 10);
+                    data[0]  = (uint8_t)((tmp_data >> 16) & 0xFF);
+                    data[1]  = (uint8_t)((tmp_data >> 8) & 0xFF);
+                    data[2]  = (uint8_t)(tmp_data & 0xFF);
+
+                    tmp_data = (int32_t)((RadarPara.FarVerticalAdptiveAngle) * 10);
+                    data[3]  = (uint8_t)((tmp_data >> 16) & 0xFF);
+                    data[4]  = (uint8_t)((tmp_data >> 8) & 0xFF);
+                    data[5]  = (uint8_t)(tmp_data & 0xFF);
+                    data[6]  = 0xFF;
+                    Private_Can_CalibrtionDebug(0x720, data, 7);
+                    /*******debug*****/
+#endif
+                }
+            } else {
+                Adaptive_CalibrationClear();
+            }
+    }
+    else
+    {
+        Adaptive_CalibrationClear();
+    }
+}
+
+
+uint8_t Rang_judge(const or_point_cloud_format_t *PeakList)
+{
+    #define TARGET_MIN_RANGE 5.0f
+    #define TARGET_MAX_RANGE 25.0f
+    float32_t temp_Ydata = 0.0f;
+    uint32_t i = 0;
+    uint8_t result = 0;
+    uint16_t rang0_2 = 0, rang2_4 = 0, rang4_7 = 0;
+    float32_t azimuth_deg = 0.0f;
+    for (i = 0; i < PeakList->point_count; i++)
+    {
+        azimuth_deg = RAD_TO_DEG(PeakList->term[i].azimuth);
+
+        result = CAL_Target_Filtering(PeakList, i); 
+        printf("result=%d\n",result);
+        if((PeakList->term[i].range > TARGET_MIN_RANGE) && (PeakList->term[i].range < TARGET_MAX_RANGE))
+        {
+        if (result)
+        {   
+            if(INSTALL_DIRECTION)
+            {
+                temp_Ydata = PeakList->term[i].range * sin((RadarPara.InstallAngle - (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
+            }else
+            {printf("111111111111\n");
+                temp_Ydata = PeakList->term[i].range * sin((RadarPara.InstallAngle + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
+            }
+            
+            if (temp_Ydata < 2.01f) {
+                rang0_2++;
+            } else if (temp_Ydata < 4.01f) {
+                rang2_4++;
+            } else {
+                rang4_7++;
+            }
+        }
+    }
+    }
+    if (rang0_2 > rang2_4 && rang0_2 > rang4_7)
+    {
+        return 1;
+    }
+    else if (rang2_4 > rang0_2 && rang2_4 > rang4_7)
+    {
+        return 2;
+    }
+    else if (rang4_7 > rang2_4 && rang4_7 > rang0_2)
+    {
+        return 3;
+    }
+    
+    return 0;
+}
+
+
+
+// void Adaptive_Calibration_Exit(uint8_t* StatusArray)  //退出标定
+// {
+//     //uint8_t last_cal_st = 0; // 0 is fail; 1 is sucess.
+//     ClockP_stop(&adaptive_cal_clock);
+// #if 0
+//     ClockP_destruct(&adaptive_cal_clock);
+// #endif
+//     radar_work_mode_t radar_data = WORKIN_TRACK_MODE;
+//     SaveAdaptiveCalStatus_DID_0x4902(StatusArray);
+
+//     // if (StatusArray[0] == 0x00)
+//     //     last_cal_st = 0x1;  // Calibration is OK
+//     // else 
+//     //     last_cal_st = 0x0;  // Calibration is fail
+//     SaveLastCalStatus(CalibrationPara.Master_Result);
+
+//     RadarPara.FarHorizontalAdptiveAngle = RadarPara.TempHorizontalAdptiveAngle;
+//     RadarPara.FarVerticalAdptiveAngle = RadarPara.TempVerticalAdptiveAngle;
+//     _atomic_store(RadarPara.WorkMode, radar_data);
+// }
+
+uint8_t Body_Posture_Detection(void)
+{
+    uint8_t result = 0;
+    float velocity = KMH_TO_MS(Message_VehicleMsg.Velocity);
+    float steeringAngle = fabs(Message_VehicleMsg.SteeringAngle);
+    float curveRadius = fabs(Message_VehicleMsg.CurveRadius);
+    float yawRate = fabs(Message_VehicleMsg.YawRate);
+
+    result = (velocity > Calibration_MinVelocity ) && (velocity < Calibration_MaxVelocity) 
+             && (steeringAngle < Calibration_MaxSteeringAngle) 
+             && (curveRadius > Calibration_MaxRoadCurve) 
+             && (yawRate < Calibration_MaxYawRate);
+
+    return result;
+}
 
 
 
 void Calibration_Progress(uint8_t pace)
 {
-    adapt_format.adaptve_calibrationpara.TEMP_PB     = max(pace, adapt_format.adaptve_calibrationpara.TEMP_PB);
-    adapt_format.adaptve_calibrationpara.adaptive_PB = max(adapt_format.adaptve_calibrationpara.TEMP_PB, adapt_format.adaptve_calibrationpara.adaptive_PB);
-}
-
-// 计算两个点之间的欧氏距离
-double calculate_distance(const Point *a, const Point *b)
-{
-    double sum = 0.0;
-    for (int i = 0; i < DIMENSIONS; i++) {
-        sum += pow(a->coords[i] - b->coords[i], 2);
-    }
-    return sqrt(sum);
-}
-// 查找某个点的ε邻域内的所有点（返回值为邻域点数量）
-int find_neighbors(int point_idx, double eps, int *neighbors)
-{
-    int count = 0;
-    for (int i = 0; i < total_points; i++) {
-        if (calculate_distance(&dataset[point_idx], &dataset[i]) <= eps) {
-            neighbors[count++] = i;
-        }
-    }
-    return count;
-}
-// DBSCAN算法主函数
-void dbscan(double eps, int min_pts)
-{
-    int cluster_id = 0;
-    for (int i = 0; i < total_points; i++) {
-        if (dataset[i].visited) continue;
-        dataset[i].visited = true;
-
-        int neighbors[MAX_POINTS];
-        int num_neighbors = find_neighbors(i, eps, neighbors);
-
-        if (num_neighbors < min_pts) {
-            // 标记为噪声（后续可能被归入其他簇）
-            dataset[i].cluster_id = -1;
-        } else {
-            // 创建新簇
-            cluster_id++;
-            dataset[i].cluster_id = cluster_id;
-
-            // 扩展簇
-            for (int j = 0; j < num_neighbors; j++) {
-                int neighbor_idx = neighbors[j];
-                if (!dataset[neighbor_idx].visited) {
-                    dataset[neighbor_idx].visited = true;
-                    int sub_neighbors[MAX_POINTS];
-                    int sub_num = find_neighbors(neighbor_idx, eps, sub_neighbors);
-                    if (sub_num >= min_pts) {
-                        // 将新邻域点加入处理队列（这里直接扩展数组）
-                        for (int k = 0; k < sub_num; k++) {
-                            neighbors[num_neighbors++] = sub_neighbors[k];
-                        }
-                    }
-                }
-                // 如果点未被归类到任何簇，则加入当前簇
-                if (dataset[neighbor_idx].cluster_id == -1 || dataset[neighbor_idx].cluster_id == 0) {
-                    dataset[neighbor_idx].cluster_id = cluster_id;
-                }
-            }
-        }
-    }
+    CalibrationPara.TEMP_PB = max(pace, CalibrationPara.TEMP_PB);
+    CalibrationPara.adaptive_PB = max(CalibrationPara.TEMP_PB, CalibrationPara.adaptive_PB);
 }
 
 
+// int32_t Private_Can_CalibrationDebug(uint32_t ID, uint8_t* Data, uint8_t length)
+// {
+//     uint32_t tx_id = ID;
+//     MCAN_TxBufElement tx_msg;
+//     int8_t errcode = 0;
+    
+//     MCAN_initTxBufElement(&tx_msg);
+    
+//     if (length < 9) {
+//         tx_msg.dlc = MCAN_DATA_SIZE_8BYTES;
+//     } else if (length < 17) {
+//         tx_msg.dlc = MCAN_DATA_SIZE_16BYTES;
+//     } else if (length < 25) {
+//         tx_msg.dlc = MCAN_DATA_SIZE_24BYTES;
+//     } else if (length < 33) {
+//         tx_msg.dlc = MCAN_DATA_SIZE_32BYTES;
+//     } else if (length < 49) {
+//         tx_msg.dlc = MCAN_DATA_SIZE_48BYTES;
+//     } else if (length < 65) {
+//         tx_msg.dlc = MCAN_DATA_SIZE_64BYTES;
+//     } else {
+//         return errcode;
+//     }
+    
+//     tx_msg.fdf = TRUE;
+//     tx_msg.xtd = FALSE;
+    
+//     for (uint8_t i = 0; i < length; i++) {
+//         tx_msg.data[i] = Data[i];
+//     }
+    
+//     tx_msg.id = (((tx_id) & MCAN_STD_ID_MASK) << MCAN_STD_ID_SHIFT);
+    
+//     errcode = send_message_via_private_can(&tx_msg);
+    
+//     return errcode;
+// }
 
 
-void adaptive_result_set(calibration_adaptive_result_kind_t result,calibration_adaptive_error_kind_t error_type,float angle_h,float angle_v)
-{
-    // uint8_t StatusArray[9] = {0};
-    // adapt_format.adaptve_calibrationpara.adapt_result = result; // 雷达标定结果为失败
-    // adapt_format.adaptve_calibrationpara.errType = error_type; // 角度偏差过大
-
-    // adap_result.last_result = result;
-    // adap_result.adapt_angle_h = angle_h; // 水平角度误差值
-    // adap_result.adapt_angle_v = angle_v; // 垂直角度误差值
-
-    // RadarPara.FarHorizontalAdptiveAngle = adap_result.adapt_angle_h;
-    // RadarPara.FarVerticalAdptiveAngle = adap_result.adapt_angle_v;
-
-    // StatusArray[0] = result;
-    // StatusArray[1] = error_type;
-    // StatusArray[2] = (((int16_t)(RadarPara.FarHorizontalAdptiveAngle * 100)) >> 8) & 0xFF;
-    // StatusArray[3] = ((int16_t)(RadarPara.FarHorizontalAdptiveAngle * 100)) & 0xFF;
-    // StatusArray[4] = (((int16_t)(RadarPara.FarVerticalAdptiveAngle * 100)) >> 8) & 0xFF;
-    // StatusArray[5] =((int16_t)(RadarPara.FarVerticalAdptiveAngle * 100)) & 0xFF;
-    // //SaveAdaptiveCalStatus_DID_0x4902(StatusArray);
-    // //Config_WriteAllConfig();
-    // calibration_result_write();
-}
-///////////////////////新框架///////////////////////////////////////////////////
-
-static void adaptive_data_clear(void)
-{
-    uint16_t i;
-    adapt_format.adaptve_calibrationpara.SteeringAngle = 0;
-    adapt_format.adaptve_calibrationpara.YawRate = 0;
-    adapt_format.adaptve_calibrationpara.Velocity = 0;
-    adapt_format.adaptve_calibrationpara.Frame = 0;
-    adapt_format.adaptve_calibrationpara.DataNum = 0;
-    adapt_format.adaptve_calibrationpara.FalseFrame = 0;
-    adapt_format.adaptve_calibrationpara.AveYdata = 0;
-    adapt_format.adaptve_calibrationpara.Adap_A = 0;
-    adapt_format.adaptve_calibrationpara.Adap_B = 0;
-    adapt_format.adaptve_calibrationpara.Adap_Angle = 0;
-    adapt_format.adaptve_calibrationpara.errType = 0;
-    adapt_format.adaptve_calibrationpara.TEMP_PB = 0;
-    adapt_format.adaptve_calibrationpara.apat_angle_h = 0;
-    adapt_format.adaptve_calibrationpara.apat_angle_v = 0;
-
-    adapt_format.adaptve_calibrationpara.driving_profile = 0;
-
-    for (i = 0; i < SINGLE_DATA_AMOUNT; i++)
-    {
-
-        adapt_format.adaptve_calibrationpara.xdata[i] = 0;
-        adapt_format.adaptve_calibrationpara.ydata[i] = 0;
-        adapt_format.adaptve_calibrationpara.rangdata[i] = 0;
-        adapt_format.adaptve_calibrationpara.elevdata[i] = 0;
-    }
-    adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_BODY_POSTURE_DETECTION;
-}
-
-
-static int32_t adaptive_wokemode_check(void)
-{
-    int32_t                 check_result  = ADAPTIVE_WORKMODE_CHECK_NO_SUCCESS;
-    // const radar_work_mode_t work_mode_now = _atomic_load(RadarPara.WorkMode, radar_work_mode_t); //当前工作模式API
-    // if (work_mode_now != WORKIN_MODE_ADAPTIVE_CALIBRATION) {
-         check_result = ADAPTIVE_WORKMODE_CHECK_SUCCESS;
-    // }
-
-    adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_INIT;
-    return check_result;
-}
-
-static int32_t adaptive_init(void)
-{
-    int32_t init_result = ADAPTIVE_INIT_SUCCESS;
-    //memset(dataset, 0, sizeof(dataset));
-    calibration_extern_para.cal_install_angle = 0;
-    calibration_extern_para.cal_installation = INSTALL_FRONT;
-    adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_BODY_POSTURE_DETECTION;
-    return init_result;
-}
-
-
-
-/**
- * @brief 车身姿态有效性检测
- * @return true - 姿态有效, false - 姿态无效
- * @note 各阈值参数说明:
- *   - 速度范围: (MinVel, MaxVel) 开区间
- *   - 转向角: 绝对值小于 MaxSteeringAngle
- *   - 道路曲率: 绝对值大于 MinCurveRadius
- *   - 横摆角速度: 绝对值小于 MaxYawRate
- */
-static bool body_posture_detection(void)
-{
-    //printf("body_posture_detection");
-    #define BODY_POSTERE_DETECTION 2
-    // ================= 输入有效性验证 =================
-    const Message_VehicleMsgS *pMsg = &Message_VehicleMsg;
-
-    // 验证浮点数值有效性
-    if (!isfinite(pMsg->Velocity) || !isfinite(pMsg->SteeringAngle) || !isfinite(pMsg->CurveRadius)
-        || !isfinite(pMsg->YawRate)) {
-        return false;
-    }
-
-    // ================= 参数预处理 =================
-    const float velocity_mps = fabsf(KMH_TO_MS(pMsg->Velocity)); // km/h -> m/s
-    const float abs_steering = fabsf(pMsg->SteeringAngle);
-    const float abs_curvature = fabsf(pMsg->CurveRadius);
-    const float abs_yaw_rate  = fabsf(pMsg->YawRate);
-
-    // ================= 分层条件检测 =================
-    const bool is_velocity_valid = (velocity_mps > ADAPTIVE_MIN_VELOCITY) && (velocity_mps < ADAPTIVE_MAX_VELOCITY);
-
-    const bool is_steering_valid = (abs_steering < ADAPTIVE_MAX_STEERING_ANGLE);
-
-    const bool is_curvature_valid = (abs_curvature > ADAPTIVE_MIN_CURVERADIUS); // 修正变量名歧义
-
-    const bool is_yawrate_valid = (abs_yaw_rate < ADAPTIVE_MAX_YAWRATE);
-
-    // ================= 诊断日志输出 =================
-    if (!is_velocity_valid) {
-      //  LOG_WARN("Velocity out of range: %.1f m/s (Req: %.1f~%.1f)", velocity_mps, ADAPTIVE_MIN_VELOCITY,
-      //     ADAPTIVE_MAX_VELOCITY);
-    }
-    if (!is_steering_valid) {
-      //  LOG_WARN("Steering angle overflow: %.1f deg > %.1f", abs_steering, ADAPTIVE_MAX_STEERING_ANGLE);
-    }
-    if (!is_curvature_valid) {
-      //  LOG_WARN("Curve radius too small: %.1f m < %.1f", abs_curvature, ADAPTIVE_MIN_CURVERADIUS);
-    }
-    if (!is_yawrate_valid) {
-      //  LOG_WARN("Yaw rate overflow: %.2f rad/s > 0.8", abs_yaw_rate);
-    }
-    update_calibration_progress(PROGRESS_STEP,BODY_POSTERE_DETECTION);
-    // ================= 综合判断 =================
-    const bool is_posture_valid = is_velocity_valid && is_steering_valid && is_curvature_valid && is_yawrate_valid;
-
-    return is_posture_valid;
-
-    //return true;
-}
-
-
-/**
- * @brief 校准目标过滤函数
- * @param PeakList 点云数据结构体指针
- * @param i 目标点索引
- * @return uint8_t 1=有效目标, 0=无效目标
- * @note 执行流程:
- *   1. 输入有效性检查
- *   2. 基础几何条件筛选
- *   3. 安装位置相关多普勒验证
- *   4. 动态速度阈值计算
- */
-
-
-//static uint8_t CAL_Target_Filtering(const or_point_cloud_term_t *term)
 uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint8_t i)
 {
     uint8_t Calibration_flag = 0;
     float32_t temp_speed_gap = 0xff;
-    //printf("CAL_Target_Filtering\n");
-    if (PeakList->term[i].range > X_DISTANCE_MIN 
-        && PeakList->term[i].range < X_DISTANCE_MAX
-        && (PeakList->term[i].azimuth * 180 / PI) > 0.0f
-        && (PeakList->term[i].azimuth * 180 / PI) < 55.0f
-        && PeakList->term[i].snr >= ADAPTIVE_MIN_RCS)
+    float32_t cosValue = 0.0f;
+
+    if (PeakList->term[i].range > CalibrationRangeMin 
+        && PeakList->term[i].range < CalibrationRangeMax
+        && (PeakList->term[i].azimuth * 180 / PI) > ADAPTIVE_MIN_AZIMUTH
+        && (PeakList->term[i].azimuth * 180 / PI) < ADAPTIVE_MAX_AZIMUTH
+        && PeakList->term[i].snr >= Calibration_MinRCs)
     {
-        //bool isLeftOrRightFront = (RadarPara.InstallPosition == INSTALL_LEFT_FRONT || RadarPara.InstallPosition == INSTALL_RIGHT_FRONT);
-        bool isLeftOrRightFront = (RadarPara.InstallPosition == INSTALL_FRONT);
+        bool isLeftOrRightFront = (RadarPara.InstallPosition == INSTALL_LEFT_FRONT || RadarPara.InstallPosition == INSTALL_RIGHT_FRONT);
         bool isDopplerNegative = PeakList->term[i].doppler < 0.0f;
 
         if ((isLeftOrRightFront && isDopplerNegative) || (!isLeftOrRightFront && !isDopplerNegative))
         {
-            float32_t cosValue = cos((0 + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
+            if(INSTALL_DIRECTION)
+            {
+                printf("333333333333\n");
+                cosValue = cos((RadarPara.InstallAngle - (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
+            }else{
+                printf("22222222222\n");
+                cosValue = cos((RadarPara.InstallAngle + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
+            }
+            
             float32_t speed = Message_VehicleMsg.Velocity / 3.6f;
             float32_t threshold = 0.15f;
 
             if (speed >= 4.1f && speed < 8.3f)
             {
-                threshold = 0.15f;//0.12//0.13
+                threshold = 0.1f;
             }
-            else if (speed >= 8.3f)//0.1//.12
+            else if (speed >= 8.3f)
             {
-                threshold = 0.15f;
+                threshold = 0.08f;
             }
 
             if (isLeftOrRightFront)
@@ -391,9 +922,11 @@ uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint8_t i)
             else
             {
                 temp_speed_gap = fabs(PeakList->term[i].doppler / cosValue - speed);
+                printf("temp_speed_gap=%f\n",temp_speed_gap);
             }
 
             Calibration_flag = (temp_speed_gap < speed * threshold);
+            printf("temp_speed_gap=%f,speed=%f,threshold=%f,Calibration_flag=%d\n",temp_speed_gap,speed,threshold,Calibration_flag);
         }
     }
 
@@ -459,576 +992,7 @@ uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint8_t i)
 
 }
 
-
-/**
- * @brief 统计有效目标在Y轴方向的分布密度
- * @param PeakList 点云数据结构体指针
- * @return 区域标识: 
- *          1 = 低密度区(0-4m)目标更多
- *          2 = 高密度区(4-8m)目标更多
- *          0 = 无效输入或无有效目标
- */
-static uint8_t Range_Density_Analysis(const or_point_cloud_format_t *PeakList)
-{
-    // ================= 输入有效性验证 =================
-    if (!PeakList || PeakList->point_count == 0) {
-       // LOG_ERROR("Invalid input: PeakList=%p", PeakList);
-        return 0;
-    }
-
-    // ================= 初始化统计计数器 =================
-    uint16_t count_y_low  = 0; // Y轴0-4米区域计数
-    uint16_t count_y_high = 0; // Y轴4-8米区域计数
-    const or_point_cloud_term_t *term = NULL; // 当前目标点指针
-    // ================= 主处理循环 =================
-    
-    for (uint32_t i = 0; i < PeakList->point_count; ++i) {
-
-        term = &PeakList->term[i];
-
-        // 阶段1: 快速过滤无效距离点
-        if (term->range <= RANGE_MIN || term->range >= RANGE_MAX) {
-            continue;
-        }
-
-        // 阶段2: 目标有效性验证
-        
-        const uint8_t is_valid_target = CAL_Target_Filtering(PeakList,i);
-        if (!is_valid_target) {
-            continue;
-        }
-        //printf("is_valid_target = %d\n", is_valid_target);
-        //Out_Put_Vehicle_List(0x06);
-        // 阶段3: 坐标转换计算
-        float azimuth_deg = 0;
-        if (calibration_extern_para.cal_installation == INSTALL_FRONT
-            || calibration_extern_para.cal_installation == INSTALL_BACK) {
-                azimuth_deg = term->azimuth;
-        } else {
-                azimuth_deg = DEG_TO_RAD(calibration_extern_para.cal_install_angle) - term->azimuth;
-        }
-        //const float azimuth_deg = DEG_TO_RAD(calibration_extern_para.cal_install_angle) - term->azimuth; /* 根据安装位置调整方位角计算偏移量 */
-        //const float azimuth_deg = RAD_TO_DEG(azimuth_deg_temp);
-        //Out_Put_Vehicle_List(0x07);
-        const float y_offset = term->range * sinf(azimuth_deg);
-        //printf("y_offset = %f\n", y_offset);
-        //Out_Put_Vehicle_List(0x08);
-        // 阶段4: Y轴区域统计
-        if (y_offset > 0.0f && y_offset < Y_SEGMENT_LOW) {
-            ++count_y_low;
-        } else if (y_offset >= Y_SEGMENT_LOW && y_offset < Y_SEGMENT_HIGH) {
-            ++count_y_high;
-        }
-    }
-
-    // ================= 密度比较决策 =================
-    //LOG_INFO("Y轴区域统计: 低区=%u, 高区=%u", count_y_low, count_y_high);
-
-    if (count_y_low > count_y_high) {
-        return DENSE_ZONE_LOW;
-    } else if (count_y_high > 0) { // 避免高区为0时返回2
-        return DENSE_ZONE_HIGH;
-    }
-    return 0; // 无有效目标
-}
-
-
-/**
- * @brief 标定初始化处理流程
- * @param PeakList 点云数据结构体指针
- */
-static void calibration_init_process(const or_point_cloud_format_t *PeakList)
-{
-    
-    //printf("calibration_init_process");
-    // ================= 初始化校验 =================
-    if (!PeakList) {
-        return;
-    }    
-    // printf("Message_VehicleMsg.Velocity = %f\n", Message_VehicleMsg.Velocity);
-    // printf("Message_VehicleMsg.SteeringAngle = %f\n", Message_VehicleMsg.SteeringAngle);
-    // printf("Message_VehicleMsg.CurveRadius = %f\n", Message_VehicleMsg.CurveRadius);
-    // printf("Message_VehicleMsg.YawRate = %f\n", Message_VehicleMsg.YawRate);
-
-    //printf("peaklist->point_count = %d\n", PeakList->point_count);
-    // printf("peaklist->term[0].range = %f\n", PeakList->term[0].range);
-    // printf("peaklist->term[0].azimuth = %f\n", PeakList->term[0].azimuth);    
-    // printf("peaklist->term[0].snr = %f\n", PeakList->term[0].snr);
-    // printf("peaklist->term[0].doppler = %f\n", PeakList->term[0].doppler);
-    
-    // ================= 环境感知预处理 =================
-    adapt_format.adaptve_calibrationpara.AveYdata = 0.0f;
-    
-    const uint8_t range_zone = Range_Density_Analysis(PeakList); // 重构后的区域分析函数
-
-    // ================= 动态边界设置 =================
-    float lower_bound, upper_bound;
-    switch (range_zone) {
-    case DENSE_ZONE_HIGH: // 4.01-8.0米高密度区
-        lower_bound = 4.01f;
-        upper_bound = 8.0f;
-        break;
-    case DENSE_ZONE_LOW: // 0-4.01米低密度区
-        lower_bound = 0.0f;
-        upper_bound = 4.01f;
-        break;
-    default: // 无效区域处理
-        lower_bound = 0.0f;
-        upper_bound = 15.0f;
-        adaptive_data_clear();
-
-        return;
-    }
-
-    // ================= 有效数据收集 =================
-    uint32_t valid_count = 0;
-    float    y_data_sum  = 0.0f;
-    const or_point_cloud_term_t *term        = NULL ; // 当前目标点指针
-    
-    for (uint32_t i = 0; i < PeakList->point_count; ++i) {
-        term = &PeakList->term[i];
-        // 阶段1: 快速过滤
-        if (!CAL_Target_Filtering(PeakList,i)) { // 封装过滤逻辑
-            continue;
-        }
-        // 阶段2: 坐标计算
-        //const float                  azimuth_deg = RAD_TO_DEG(term->azimuth);
-        float azimuth_calib_deg = 0;
-
-        if (calibration_extern_para.cal_installation == INSTALL_FRONT
-            || calibration_extern_para.cal_installation == INSTALL_BACK) {
-                azimuth_calib_deg = term->azimuth;
-        } else {
-            azimuth_calib_deg = DEG_TO_RAD(calibration_extern_para.cal_install_angle) - term->azimuth;
-        }
-        //Out_Put_Vehicle_List(0x14);
-        const float y_offset  =  term->range * sinf(azimuth_calib_deg);
-        //Out_Put_Vehicle_List(0x0A);
-        // 阶段3: 区域验证
-        if (y_offset > lower_bound && y_offset < upper_bound) {
-            y_data_sum += y_offset;
-            ++valid_count;
-        }
-    }
-
-    // ================= 标定启动决策 =================
-    //Out_Put_Vehicle_List(0x0B);
-    update_calibration_progress(PROGRESS_STEP, INITIAL_PROGRESS);
-//printf("valid_count  = %d\n", valid_count);
-    if (valid_count >= CALIBRATION_MIN_SAMPLES) {
-        adapt_format.adaptve_calibrationpara.AveYdata = y_data_sum / valid_count;
-        if (is_valid_calibration_range(adapt_format.adaptve_calibrationpara.AveYdata)) {
-            activate_calibration();
-            //Out_Put_Vehicle_List(0x0C);
-            update_calibration_progress(PROGRESS_STEP, FINAL_PROGRESS_OFFSET);
-            adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_DATUM_SELECTION;  // 进入数据收集阶段
-        } else {
-            adaptive_data_clear(); // 标定放弃
-        }
-    } else {
-        adaptive_data_clear(); // 标定放弃
-    }
-}
-
-// ================= 工具函数 =================
-/**
- * @brief 目标过滤检查
- */
-static bool Target_Filtering_Check(const or_point_cloud_term_t *term, uint8_t zone)
-{
-    // return CAL_Target_Filtering(term) && (zone != 0);
-    return (zone != 0);
-}
-
-
-/**
- * @brief 更新标定进度
- */
-static void update_calibration_progress(uint8_t step, uint8_t offset)
-{
-    const uint8_t progress = adapt_format.adaptve_calibrationpara.Counter * step + offset;
-    Calibration_Progress(progress);
-}
-
-/**
- * @brief 激活标定参数
- */
-static void activate_calibration(void)
-{
-    adapt_format.adaptve_calibrationpara.SteeringAngle = Message_VehicleMsg.SteeringAngle;
-    adapt_format.adaptve_calibrationpara.Velocity      = KMH_TO_MS(Message_VehicleMsg.Velocity);
-
-// 调试数据记录
-#ifdef CALIBRATION_DEBUG
-    //log_calibration_data(adapt_format.adaptve_calibrationpara.SteeringAngle, adapt_format.adaptve_calibrationpara.AveYdata);
-#endif
-}
-
-/**
- * @brief 校验Y数据有效性
- */
-static bool is_valid_calibration_range(float y_data)
-{
-    return (y_data > YDATA_LOWER_BOUND_CASE1) && (y_data < YDATA_UPPER_BOUND_CASE1);
-}
-
-
-/**
- * @brief 执行标定数据收集流程
- * @param PeakList 点云数据结构体指针
- */
-void calibration_data_collection(const or_point_cloud_format_t *PeakList)
-{
-    // ================= 输入有效性校验 =================
-    if (!PeakList || PeakList->point_count == 0) {
-       // LOG_ERROR("Invalid point cloud data");
-        return;
-    }
-
-    // ================= 状态条件检查 =================
-    const bool is_steer_valid =
-        fabsf(Message_VehicleMsg.SteeringAngle - adapt_format.adaptve_calibrationpara.SteeringAngle) < STEERING_TOLERANCE;
-    const bool is_velocity_valid =
-        fabsf(KMH_TO_MS(Message_VehicleMsg.Velocity) - adapt_format.adaptve_calibrationpara.Velocity) < VELOCITY_TOLERANCE_MS;
-
-    if (!is_steer_valid || !is_velocity_valid) {
-        adaptive_data_clear(); //姿态突变
-        return;
-    }
-    // ================= 数据收集循环 =================
-    //Out_Put_Vehicle_List(0x10);
-    uint32_t       valid_count     = 0;
-    const uint32_t max_data_points = SINGLE_DATA_AMOUNT;
-    const float    y_gap           = ADAPTIVE_YDATA_GAP;
-    const or_point_cloud_term_t *term = 0;
-    Point3D point = {0};
-
-    for (uint32_t i = 0; i < PeakList->point_count; ++i) {
-        term = &PeakList->term[i];
-        // 阶段1: 快速过滤
-        //Out_Put_Vehicle_List(0x11);
-        if (!CAL_Target_Filtering(PeakList,i)) {
-            continue;
-        }
-        // 阶段2: 坐标计算
-        float azimuth_rad = 0;
-        if (calibration_extern_para.cal_installation == INSTALL_FRONT
-            || calibration_extern_para.cal_installation == INSTALL_BACK) {
-             azimuth_rad = term->azimuth;
-        } else {
-             azimuth_rad = DEG_TO_RAD(calibration_extern_para.cal_install_angle) - term->azimuth;
-        }
-        //Out_Put_Vehicle_List(0x0D);
-
-        const float   elevation_rad = term->elevation;
-        point.x = term->range * cosf(azimuth_rad);
-        point.z = elevation_rad;
-        point.y = term->range * sinf(azimuth_rad);
-
-        // 阶段3: 有效性验
-        //Out_Put_Vehicle_List(0x0E);
-        const bool is_y_in_range = (point.y > (adapt_format.adaptve_calibrationpara.AveYdata - y_gap)) && (point.y < (adapt_format.adaptve_calibrationpara.AveYdata + y_gap));
-        const bool is_x_valid = ((point.x > X_DISTANCE_MIN)&&(point.x < X_DISTANCE_MAX));
-        if ((adapt_format.adaptve_calibrationpara.DataNum < max_data_points) && is_y_in_range && is_x_valid) {
-            store_calibration_data(point, term->range);
-            valid_count++;
-        }
-
-
-        if((adapt_format.adaptve_calibrationpara.DataNum +1)%300 == 0)
-        {
-            {
-                adapt_format.adaptve_calibrationpara.Counter+=1;
-                update_calibration_progress(PROGRESS_STEP, 0);
-            }
-        }
-        //Out_Put_Vehicle_List(0x13);
-    }
-    // ================= 标定状态更新 =================
-    
-    //Out_Put_Vehicle_List(0x12);
-    adapt_format.adaptve_calibrationpara.Frame++;
-
-    if (valid_count <= CALIB_TIMEFRAME_HALF) {
-        if (++adapt_format.adaptve_calibrationpara.FalseFrame > CALIB_FAIL_FRAME_THRESH) {
-            adaptive_data_clear();
-            adapt_format.adaptve_calibrationpara.driving_profile = 0x10;
-        }
-    } else {
-        adapt_format.adaptve_calibrationpara.FalseFrame = 0;
-    }
-}
-
-// ================= 工具函数 =================
-/**
- * @brief 存储标定数据点
- */
-static void store_calibration_data(Point3D point, float range)
-{
-    const uint32_t idx            = adapt_format.adaptve_calibrationpara.DataNum;
-    adapt_format.adaptve_calibrationpara.xdata[idx]    = point.x;
-    adapt_format.adaptve_calibrationpara.ydata[idx]    = point.y;
-    adapt_format.adaptve_calibrationpara.elevdata[idx]  = RAD_TO_DEG(point.z); // elevation转换
-    adapt_format.adaptve_calibrationpara.rangdata[idx] = range;
-    adapt_format.adaptve_calibrationpara.DataNum++;
-}
-
-static void adaptive_data_volume_judg(void)
-{
-    if (adapt_format.adaptve_calibrationpara.FalseFrame > (ADAPTIVE_FRAME_NUM / CALIBRATION_MIN_SAMPLES)) {
-        adaptive_data_clear();            // 标定放弃
-        adapt_format.adaptve_calibrationpara.driving_profile = 0x10; // 目标不充分
-    } else if (adapt_format.adaptve_calibrationpara.Frame >= ADAPTIVE_FRAME_NUM || adapt_format.adaptve_calibrationpara.DataNum >= SINGLE_DATA_AMOUNT) {
-        if (adapt_format.adaptve_calibrationpara.DataNum >= (SINGLE_DATA_AMOUNT * 3 / 5)) {
-            adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_FINISH; // 进入拟合阶段
-        } else {
-            adaptive_data_clear();            // 标定放弃
-            adapt_format.adaptve_calibrationpara.driving_profile = 0x10; // 目标不充分
-        }
-    }
-}
-
-
-
-void calibration_adaptive_polyfit(void)
-{
-    float32_t sum_x2 = 0;
-    float32_t sum_y  = 0;
-    float32_t sum_x  = 0;
-    float32_t sum_xy = 0;
-    uint32_t  i      = 0;
-    float32_t a;
-    float32_t b;
-    //水平
-    for (i = 0; i < adapt_format.adaptve_calibrationpara.DataNum; i++) {
-        float32_t x = adapt_format.adaptve_calibrationpara.xdata[i];
-        float32_t y = adapt_format.adaptve_calibrationpara.ydata[i];
-
-        sum_x2 += x * x;
-        sum_y += y;
-        sum_x += x;
-        sum_xy += x * y;
-    }
-    float32_t denominator = adapt_format.adaptve_calibrationpara.DataNum * sum_x2 - sum_x * sum_x;
-    a = (adapt_format.adaptve_calibrationpara.DataNum * sum_xy - sum_x * sum_y) / denominator;
-    b = (sum_x2 * sum_y - sum_x * sum_xy) / denominator;
-    adapt_format.adaptve_calibrationpara.Adap_B = b;
-    adapt_format.adaptve_calibrationpara.Adap_A = a;
-    adapt_format.adaptve_calibrationpara.Adap_Angle =  RAD_TO_DEG(atan(a));
-    
-    //垂直
-    float32_t sum_ele = 0;
-    int16_t   count   = 0;
-    for (int j = 0; j < adapt_format.adaptve_calibrationpara.DataNum; j++) {
-        if (adapt_format.adaptve_calibrationpara.rangdata[j] >= 50 && adapt_format.adaptve_calibrationpara.rangdata[j] <= 60) {
-            sum_ele += adapt_format.adaptve_calibrationpara.elevdata[j];
-            count++;
-        }
-    }
-    if (count != 0) {
-        float32_t averagePitch        = sum_ele / count;
-        adapt_format.adaptve_calibrationpara.Adap_eleAngle = averagePitch;
-    }
-
-    // printf("/********************************This_is_result*******************************/\n");
-    // printf("/******************************************************************************/\n");
-    printf("/*****************************Adap_Angle = %f****************************/\n",adapt_format.adaptve_calibrationpara.Adap_Angle);
-    // printf("/******************************************************************************/\n");
-    // printf("/******************************************************************************/\n");
-    // printf("/******************************************************************************/\n");
-}
-
-
-
-void calibration_adaptive_finish(void)
-{
-    // #define CALIBRATION_ADAPTIVE_FINISH 1
-
-    // offline_status_out_t *p_offline_status = offline_cal_get_status();//获取下线标定角度
-    // /*debug*/
-
-    // uint8_t StatusArray[9] = {0};
-    // /*debug*/
-    // float32_t TmpLinearAngle    = 0;
-    // float32_t TmpLineareleAngle = 0;
-    // if ((adapt_format.adaptve_calibrationpara.Adap_B > YDATA_LOWER_BOUND_CASE1)
-    //     && (adapt_format.adaptve_calibrationpara.Adap_B < YDATA_UPPER_BOUND_CASE1)) 
-    // {
-    //         TmpLinearAngle    = adapt_format.adaptve_calibrationpara.Adap_Angle;
-    //         TmpLineareleAngle = adapt_format.adaptve_calibrationpara.Adap_eleAngle;
-    //         update_calibration_progress(PROGRESS_STEP,PROGRESS_STEP);
-
-    //         adapt_format.adaptve_calibrationpara.Temp_A[adapt_format.adaptve_calibrationpara.Counter]   = TmpLinearAngle;
-    //         adapt_format.adaptve_calibrationpara.Temp_ele[adapt_format.adaptve_calibrationpara.Counter] = TmpLineareleAngle;
-    //         adapt_format.adaptve_calibrationpara.Counter++;
-
-    //     if (adapt_format.adaptve_calibrationpara.Counter > ADAPTIVE_COUNTER - 1) {
-    //         for (int i = 0; i < (adapt_format.adaptve_calibrationpara.Counter); i++) {
-    //             for (int j = 0; j < (adapt_format.adaptve_calibrationpara.Counter - i - 1); j++) {
-    //                 if (adapt_format.adaptve_calibrationpara.Temp_A[j] > adapt_format.adaptve_calibrationpara.Temp_A[j + 1]) {
-    //                     TmpLinearAngle                = adapt_format.adaptve_calibrationpara.Temp_A[j];
-    //                     adapt_format.adaptve_calibrationpara.Temp_A[j]     = adapt_format.adaptve_calibrationpara.Temp_A[j + 1];
-    //                     adapt_format.adaptve_calibrationpara.Temp_A[j + 1] = TmpLinearAngle;
-    //                 }
-    //             }
-    //         }
-    //         for (int i = 0; i < (adapt_format.adaptve_calibrationpara.Counter); i++) {
-    //             for (int j = 0; j < (adapt_format.adaptve_calibrationpara.Counter - i - 1); j++) {
-    //                 if (adapt_format.adaptve_calibrationpara.Temp_ele[j] > adapt_format.adaptve_calibrationpara.Temp_ele[j + 1]) {
-    //                     TmpLineareleAngle               = adapt_format.adaptve_calibrationpara.Temp_ele[j];
-    //                     adapt_format.adaptve_calibrationpara.Temp_ele[j]     = adapt_format.adaptve_calibrationpara.Temp_ele[j + 1];
-    //                     adapt_format.adaptve_calibrationpara.Temp_ele[j + 1] = TmpLineareleAngle;
-    //                 }
-    //             }
-    //         }
-        
-            /*
-            if (CHEACK_MODE == adapt_format.adaptve_calibrationpara.adaptive_Workmode) {
-                TmpLinearAngle                = -adapt_format.adaptve_calibrationpara.Temp_A[3];
-                TmpLineareleAngle             = RadarPara.RadarSelfDeviation + 0.5f - adapt_format.adaptve_calibrationpara.Temp_ele[3];
-                adapt_format.adaptve_calibrationpara.Adaptive_step = 0x02; //检验完成
-                adapt_format.adaptve_calibrationpara.Adaptive_Check_Angle    = TmpLinearAngle;
-                adapt_format.adaptve_calibrationpara.Adaptive_Check_eleAngle = TmpLineareleAngle;
-
-            } else 
-            if (ADAPTIVE_MODE == adapt_format.adaptve_calibrationpara.adaptive_Workmode) {
-       
-                    TmpLineareleAngle = -adapt_format.adaptve_calibrationpara.Temp_A[3];
-                    TmpLineareleAngle = RadarPara.RadarSelfDeviation + 0.5f - adapt_format.adaptve_calibrationpara.Temp_ele[3];
-            */
-           
-    //                 if (calibration_extern_para.cal_installation == INSTALL_LEFT_BACK) {
-    //                     TmpLinearAngle += 0.0f; //0.80f;
-    //                 } else if (calibration_extern_para.cal_installation == INSTALL_RIGHT_BACK) {
-    //                     TmpLinearAngle += 0.0f; //1.52f;
-    //                 }
-                    
-    //                 adapt_format.adaptve_calibrationpara.apat_angle_h = TmpLinearAngle - p_offline_status->horizontal_angle_deviation;/********Need to modify**********/
-
-
-    //                 if ((TmpLineareleAngle < (OfflineCalibration_elevTolerance_authentic - EPSILON))
-    //                     && TmpLineareleAngle > (Calibration_elevTolerance + EPSILON)) {
-    //                     TmpLineareleAngle = 2.6f + 0.3f * rand() / RAND_MAX * 1.0f; //随机数[2.6,2.9]
-    //                 } else if (TmpLineareleAngle > (-(OfflineCalibration_elevTolerance_authentic) + EPSILON)
-    //                            && TmpLineareleAngle < (-(Calibration_elevTolerance)-EPSILON)) {
-    //                     TmpLineareleAngle = -2.9f + 0.3f * rand() / RAND_MAX * 1.0f; //随机数[-2.9,-2.6]
-    //                 } else {
-    //                     //do nothing
-    //                 }
-    //                 adapt_format.adaptve_calibrationpara.apat_angle_v    = TmpLineareleAngle - p_offline_status->vertical_angle_deviation;
-
-    //                 update_calibration_progress(PROGRESS_STEP,CALIBRATION_ADAPTIVE_FINISH);   //标定完成但是未确定标定结果是否写入，进度99%，写入成功100% 
-
-    //                 if ((fabs(TmpLinearAngle) > (Calibration_Tolerance + EPSILON))
-    //                     || (fabs(TmpLineareleAngle) > (Calibration_elevTolerance + EPSILON))) {
-
-    //                         adaptive_result_set(CALIBRATION_ADAPTIVE_IS_FAIL,CALIBRATION_ADAPTIVE_IS_ANGLE_OVERSHOOT,adapt_format.adaptve_calibrationpara.apat_angle_h,adapt_format.adaptve_calibrationpara.apat_angle_v);
-                            
-    //                 } else 
-    //                 {
-    //                     adaptive_result_set(CALIBRATION_ADAPTIVE_IS_SUCCESSFUL,CALIBRATION_ADAPTIVE_IS_NO_FAIL,adapt_format.adaptve_calibrationpara.apat_angle_h,adapt_format.adaptve_calibrationpara.apat_angle_v);
-    //                 }
-    //     }else
-    //     {
-    //         adaptive_data_clear();
-    //     }
-    // }
-    // else
-    // {
-    //     adaptive_data_clear();
-    // }
-}
-
-static void calibration_result_write(void)
-{
-    /*标定结果写入API*/
-    adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_END; //标定结束
-}
-
-static void calibration_result_read(void)
-{
-    /*标定结果读取API*/
-    /*读取直到读到的标定数据与写入的标定数据一致才判断为标定成功*/
-}
-
-static void calibration_adaptive_end(void)
-{
-    #define CALIBRATION_ADAPTIVE_END  2
-    CAL_MODE = CALIBRATION_EXIT;
-    update_calibration_progress(PROGRESS_STEP, CALIBRATION_ADAPTIVE_END);
-    switching_mode_debug();
-    // if (adap_result.last_result == CALIBRATION_ADAPTIVE_IS_SUCCESSFUL)
-    // {
-    //     calibration_result_read();
-    //     /*读取直到读到的标定数据与写入的标定数据一致才判断为标定成功*/
-    // }else
-    // {
-    //     //标定失败API
-    // }
-}
-
-
-
-int32_t adaptive_flow_control_func(const or_point_cloud_format_t *PeakList)
-{
-
-    //printf("\r");
-    //printf("adapt_format.adaptve_calibrationpara.adaptive_PB =  %d\n",adapt_format.adaptve_calibrationpara.adaptive_PB);
-    switch (adapt_format.adaptve_calibrationpara.Step) {
-    case ADAPTIVE_START:
-        /* code */
-        //set_time(10)开启标定计时API
-        //AdaptiveCalClockLaunch(ADAPTIVE_CAL_TIMEOUT_CYCLE);
-        adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_INIT;
-        break;
-    case ADAPTIVE_WORKMODE_CHECK:
-        /* code */
-        adaptive_wokemode_check();
-        break;
-    case ADAPTIVE_INIT:
-        /* code */
-        adaptive_init();
-        break;
-    case ADAPTIVE_BODY_POSTURE_DETECTION:
-        /* code */
-        if(body_posture_detection())
-        {//printf("body_posture_detection success\n");
-            calibration_init_process(PeakList);
-        }else
-        {   
-            //车辆信号不满足
-            adaptive_data_clear();
-        }
-        
-        break;
-    case ADAPTIVE_DATUM_SELECTION:
-        calibration_data_collection(PeakList);
-        adaptive_data_volume_judg();
-        break;
-    case ADAPTIVE_FINISH:
-    //printf("calibration_adaptive_polyfit\n");
-        calibration_adaptive_polyfit(); // 线性回归拟合
-        calibration_adaptive_finish();
-        adapt_format.adaptve_calibrationpara.Step = ADAPTIVE_END;
-        //calibration_result_write();
-        /* code */
-        //stop_time();
-    break;
-    case ADAPTIVE_END:
-        /* code */
-        
-        calibration_adaptive_end();
-        //stop_time();
-        break;
-
-    default:
-        break;
-    }
-    
-    printf("当前标定进度；%d\r",adapt_format.adaptve_calibrationpara.adaptive_PB);
-    usleep(60000);
-    return 0;
-}
-
-
 /******************************END OF FILE*************************************/
+
+
+

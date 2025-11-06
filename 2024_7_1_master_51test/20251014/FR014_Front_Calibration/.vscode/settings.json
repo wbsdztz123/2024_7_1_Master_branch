@@ -66,6 +66,8 @@
     "adaptive_calibration.h": "c",
     "calibration_common.h": "c",
     "stdio.h": "c",
-    "unistd.h": "c"
+    "unistd.h": "c",
+    "stdint.h": "c",
+    "stdbool.h": "c"
   }
 }

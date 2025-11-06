@@ -73,6 +73,7 @@
     "string.h": "c",
     "1014calibration.h": "c",
     "stdbool.h": "c",
-    "locale.h": "c"
+    "locale.h": "c",
+    "stdint.h": "c"
   }
 }

@@ -99,7 +99,7 @@ void YD_XD_writing(float YD,float XD)
 void Calibration_Required_data()
 {
     /*********Message_VehicleMsgS********/
-    Calibration_Message.RadarParaS.InstallPosition = INSTALL_FRONT;
+    Calibration_Message.RadarParaS.InstallPosition = INSTALL_FRONT;//
     Calibration_Message.RadarParaS.InstallAngle = 0.0f;
     memcpy(&RadarPara,&Calibration_Message.RadarParaS,sizeof(RadarPara));
 }
@@ -189,7 +189,7 @@ void FILE_Read(void)
                             Calibration_Message.or_point_cloud_format_t.term[point_id].doppler = (float)atof(token);
                         break;
                         case Azimuth:
-                            Calibration_Message.or_point_cloud_format_t.term[point_id].azimuth = -((float)atof(token))*ang_to_rad;
+                            Calibration_Message.or_point_cloud_format_t.term[point_id].azimuth = ((float)atof(token))*ang_to_rad;
                         break;
                         case Snr:
                             Calibration_Message.or_point_cloud_format_t.term[point_id].snr = (float)atof(token);
@@ -238,11 +238,11 @@ void Calibration_runing_task(void)
         switch(CAL_MODE)
         {
             case CALIBRATION_INIT:
-                adaptive_start_func();
+                AdaptiveCalStart();
                 CAL_MODE = CALIBRATION_RUNING;
                 break;
             case CALIBRATION_RUNING:
-                adaptive_calibrate_func(&Calibration_Message.or_point_cloud_format_t);
+                Adaptive_Calibration(&Calibration_Message.or_point_cloud_format_t);
                // printf("Calibration_runing\n");
             break;
             default:

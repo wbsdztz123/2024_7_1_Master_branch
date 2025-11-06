@@ -11,7 +11,7 @@ const char *Split_symbol = ",";
 #define ang_to_rad  PI/180.0f
 #define Filter_Angle_Output_File_PATH "C:\\Users\\zhujunnan\\Desktop\\MuGITHUB\\2024_7_1_master_51test\\Filter_Angle_output.txt"
 
-/****************************peak_csv_title**********/ 
+/****************************peak_csv_title************/ 
 #define Frame_number 0    //帧ID
 #define Serial_number 1   //序列号
 #define Range  2
@@ -26,7 +26,7 @@ const char *Split_symbol = ",";
 /*************车辆信息************/
 #define LIST_NUM  18//15   //只读取列数前18列
 #define line_NUM  300      //只读取行数
-/****************************peak_csv_title**********/ 
+/****************************peak_csv_title**************/ 
 
 
 
@@ -90,12 +90,11 @@ void YD_XD_writing(float YD,float XD)
     fprintf(output_fp,"%f\t%f\n",YD,XD);
     fflush(output_fp);
     fclose(output_fp);
-
 }
 
 void ang_dopp_rang_snr_vel(float32_t angle,float32_t doppler,float32_t range,float32_t snr,float32_t vel)
 {   
-        FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
+    FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
     if (NULL == output_fp)
     {
         perror("open_output_file error");
@@ -104,7 +103,6 @@ void ang_dopp_rang_snr_vel(float32_t angle,float32_t doppler,float32_t range,flo
     fprintf(output_fp,"%f\t%f\t%f\t%f\t%f\n",angle,doppler,range,snr,vel);
     fflush(output_fp);
     fclose(output_fp);
-
 }
 
 

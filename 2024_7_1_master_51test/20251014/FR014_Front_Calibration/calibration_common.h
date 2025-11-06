@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include "common_api.h"
 
+#define DIRECTLY_BEHIND_IS_NEGATIVE    false//正后方负角度
+#define DIRECTLY_BEHIND_IS_POSITIVE    true     //正后方正角度
+#define INSTALL_DIRECTION    DIRECTLY_BEHIND_IS_NEGATIVE   //雷达安装方向 1正 -1负
 
 // #define true 1
 // #define false 0
@@ -18,8 +21,9 @@
 // #define TRUE 1
 // #define FALSE 0
 
-#define RAD_TO_DEG(rad) ((rad) * 57.2957795f) // 180/PI ≈ 57.2957795
-#define DEG_TO_RAD(deg) ((deg) * 0.0174532925f)
+#define KMH_TO_MS(kmh) ((kmh) / 3.6)
+#define RAD_TO_DEG(rad)                                      ((rad) * 57.2957795f) // 180/PI ≈ 57.2957795
+#define DEG_TO_RAD(deg)                                      ((deg) * 0.0174532925f)
 
 #define EPSILON 1e-9
 #define MAX_ANGLE_DEVIATION 10.0f //角度偏差最大值
