@@ -6,10 +6,10 @@
 #include "commapi.h"
 #include "calibration_common.h"
 #define MAX_STATIC_PEAK_NUM 300
-#define  RANSAC_THRESHOLD  0.15f // 内点残差筛选阈值
+#define  RANSAC_THRESHOLD  0.10f // 内点残差筛选阈值
 
-#define MIN_INLIER_COUNT 80
-#define MIN_BEST_INLIER_COUNT 80
+#define MIN_INLIER_COUNT 10
+#define MIN_BEST_INLIER_COUNT 50
 
 #define CANDIDATE_ANGLE_NUM 21
 
@@ -63,9 +63,10 @@ typedef struct {
     uint8_t is_straight_road;    // 是否直道 - 1=直道，0=弯道
 } data_confidence_t;
 
+int16_t Precise_angle_estimation_calibration(float32_t  yaw_angle);
 void calibration_conditions_not_met(void);
 void init_calibration(void);
-bool point_doppler_filter(const or_point_cloud_term_t *point_cloud);
+bool point_doppler_filter(const float32_t doppler);
 bool validate_calibration_result(const static_peak_t *cal_static_Peak,float calibrated_yaw);
 float compute_initial_yaw_from_inliers(const static_peak_t *cal_static_Peak);
 float compute_gradient(const static_peak_t *cal_static_Peak,float yaw_deg);
@@ -75,6 +76,6 @@ int16_t collection_internal_point(const or_point_cloud_format_t *PeakList,float 
 int16_t count_inliers_for_candidate(const or_point_cloud_format_t *PeakList,float candidate_angle);
 int16_t RANSAC_calibration(const or_point_cloud_format_t *PeakList);
 void adapt_calibration(const or_point_cloud_format_t *PeakList);
-bool point_param_filter(const or_point_cloud_term_t *point_cloud);
+bool point_param_filter(const float32_t azimuth,const float32_t range);
 
 #endif

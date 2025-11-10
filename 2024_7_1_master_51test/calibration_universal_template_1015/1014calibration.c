@@ -24,12 +24,12 @@ float calculate_overall_confidence(void)
     float score = 0.0f;    // 实际得分
     float max_score = 0.0f; // 理论最大得分
 
-        if(peak_confidence.valid_point_count >= 100) {  // 确保有足够统计意义
-        // 内点评分 = 内点比例×70% + 内点数量得分×30%
-        float inlier_score = (peak_confidence.inlier_ratio * 0.7f) + 
-                           (fmin(peak_confidence.inlier_count / 150.0f, 1.0f) * 0.3f);
-        score += inlier_score * 0.3f;  // 应用30%权重
-        }
+    if(peak_confidence.valid_point_count >= 100) {  // 确保有足够统计意义
+    // 内点评分 = 内点比例×70% + 内点数量得分×30%
+    float inlier_score = (peak_confidence.inlier_ratio * 0.7f) + 
+                        (fmin(peak_confidence.inlier_count / 150.0f, 1.0f) * 0.3f);
+    score += inlier_score * 0.3f;  // 应用30%权重
+    }
     max_score += 0.3f;  // 内点维度的最大可能得分
     
     // 2. 残差质量评估 (权重: 70%)
@@ -51,7 +51,7 @@ uint16_t Basic_filtering_of_point_cloud(const or_point_cloud_format_t *PeakList)
     int16_t inlier_count = 0; // 内点数量
     for(int i = 0; i < PeakList->point_count; i++)
     {
-        if((!point_doppler_filter(&PeakList->term[i]))||(!point_param_filter(&PeakList->term[i])))
+        if((!point_doppler_filter(PeakList->term[i].doppler))||(!point_param_filter(PeakList->term[i].azimuth,PeakList->term[i].range)))
         {
             continue;
         }else
@@ -73,7 +73,7 @@ void calculate_residual_stats(const or_point_cloud_format_t *PeakList, float can
 
     for(int i = 0; i < PeakList->point_count; i++)
     {
-        if((!point_doppler_filter(&PeakList->term[i]))||(!point_param_filter(&PeakList->term[i])))
+        if((!point_doppler_filter(PeakList->term[i].doppler))||(!point_param_filter(PeakList->term[i].azimuth,PeakList->term[i].range)))
         {
             continue;
         }
@@ -160,18 +160,18 @@ void init_calibration(void)
     memset(&cal_peak,0,sizeof(static_peak_t)*MAX_STATIC_PEAK_NUM);
 }
 
-bool point_doppler_filter(const or_point_cloud_term_t *point_cloud)
+bool point_doppler_filter(const float32_t doppler)
 {
     bool isLeftOrRightFront = (RadarPara.InstallPosition == INSTALL_LEFT_FRONT || RadarPara.InstallPosition == INSTALL_RIGHT_FRONT || RadarPara.InstallPosition == INSTALL_FRONT);
-    bool isDopplerNegative = point_cloud->doppler < 0.0f;
+    bool isDopplerNegative = doppler < 0.0f;
 
     return (isLeftOrRightFront && isDopplerNegative);
 }
 
-bool point_param_filter(const or_point_cloud_term_t *point_cloud)
+bool point_param_filter(const float32_t azimuth,const float32_t range)
 {
-    bool isangle_valid = fabsf(RAD_TO_DEG(point_cloud->azimuth)) < 65.0f;
-    bool isrange_valid = (point_cloud->range > 5.0f)&&(point_cloud->range < 80.0f);
+    bool isangle_valid = fabsf(RAD_TO_DEG(azimuth)) < 65.0f;
+    bool isrange_valid = (range > 5.0f)&&(range < 80.0f);
     return (isangle_valid && isrange_valid);
 }
 
@@ -275,11 +275,9 @@ float compute_gradient(const static_peak_t *cal_static_Peak,float yaw_deg)
             // printf("peak%d: 角度=%-6.1f° 测量速度=%-7.2f 预测速度=%-7.2f\n",i,RAD_TO_DEG(angle_rad),cal_static_Peak[i].doppler,predicted);
             //  printf("速度残差:%f\n",residual);
             //  printf("梯度贡献:%f\n",residual*(-KMH_TO_MS(Message_VehicleMsg.Velocity))*sinf(angle_rad + yaw_deg));
-;
-    
+
             used_points++;
         }
-
     }
     if(used_points > 0){
         gradient /= used_points;
@@ -370,18 +368,42 @@ float estimate_yaw_from_all_points(const or_point_cloud_format_t *PeakList) {
 int16_t collection_internal_point(const or_point_cloud_format_t* PeakList,float candidate_angle)
 {
      //printf("PeakList->point_count = %d\n",PeakList->point_count);
+    uint8_t Calibration_flag = 0;
+    float32_t temp_speed_gap = 0xff;
+
     int16_t inlier_count = 0; // 内点数量
     for(int i = 0; i < PeakList->point_count; i++)
     {
         
-        if((!point_doppler_filter(&PeakList->term[i]))||(!point_param_filter(&PeakList->term[i])))
+        if((!point_doppler_filter(PeakList->term[i].doppler))||(!point_param_filter(PeakList->term[i].azimuth,PeakList->term[i].range)))
         {
             continue;
         }
         float32_t perdicted_doppler = -KMH_TO_MS(Message_VehicleMsg.Velocity)*cosf(PeakList->term[i].azimuth + DEG_TO_RAD(candidate_angle)); //预测的径向速度
         float residual = fabsf(PeakList->term[i].doppler - perdicted_doppler); //速度残差
 
-        if (residual < RANSAC_THRESHOLD && adapt_params.static_peak_num < MAX_STATIC_PEAK_NUM)
+            uint8_t Calibration_flag = 0;
+            float32_t temp_speed_gap = 0xff;
+            float32_t cosValue = cos((0 + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
+            float32_t speed = Message_VehicleMsg.Velocity / 3.6f;
+            float32_t threshold = 0.15f;
+
+            if (speed >= 4.1f && speed < 8.3f)
+            {
+                threshold = 0.10f;//0.12//0.13
+            }
+            else if (speed >= 8.3f)//0.1//.12
+            {
+                threshold = 0.08f;
+            }
+            temp_speed_gap = fabs(PeakList->term[i].doppler / cosValue + speed);
+
+            Calibration_flag = (temp_speed_gap < speed * threshold);
+
+
+
+        if ((residual<RANSAC_THRESHOLD) && adapt_params.static_peak_num < MAX_STATIC_PEAK_NUM)
+        //if((Calibration_flag)&&(adapt_params.static_peak_num < MAX_STATIC_PEAK_NUM))
         {
             cal_peak[adapt_params.static_peak_num].angle = PeakList->term[i].azimuth;
             cal_peak[adapt_params.static_peak_num].doppler = PeakList->term[i].doppler;
@@ -401,20 +423,62 @@ int16_t count_inliers_for_candidate(const or_point_cloud_format_t *PeakList,floa
     int16_t inlier_count = 0; // 内点数量
     for(int i = 0; i < PeakList->point_count; i++)
     {
-        if((!point_doppler_filter(&PeakList->term[i]))||(!point_param_filter(&PeakList->term[i])))
+        if((!point_doppler_filter(PeakList->term[i].doppler))||(!point_param_filter(PeakList->term[i].azimuth,PeakList->term[i].range)))
         {
             continue;
         }
         float32_t perdicted_doppler = -KMH_TO_MS(Message_VehicleMsg.Velocity)*cosf(PeakList->term[i].azimuth + DEG_TO_RAD(candidate_angle)); //预测的径向速度
         float residual = fabsf(PeakList->term[i].doppler - perdicted_doppler); //残差
+
+            uint8_t Calibration_flag = 0;
+            float32_t temp_speed_gap = 0xff;
+            float32_t cosValue = cos((0 + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
+            float32_t speed = Message_VehicleMsg.Velocity / 3.6f;
+            float32_t threshold = 0.15f;
+
+            if (speed >= 4.1f && speed < 8.3f)
+            {
+                threshold = 0.10f;//0.12//0.13
+            }
+            else if (speed >= 8.3f)//0.1//.12
+            {
+                threshold = 0.08f;
+            }
+            temp_speed_gap = fabs(PeakList->term[i].doppler / cosValue + speed);
+
+            Calibration_flag = (temp_speed_gap < speed * threshold);
         // printf("PeakList->term[i].doppler = %f\n",PeakList->term[i].doppler);
+       // printf("residual = %f\n",residual);
+        if (residual < RANSAC_THRESHOLD)
+        //if(Calibration_flag)
+        {
+            inlier_count++;
+        }
+    }
+   // printf("inlier_count = %d\n",inlier_count);
+    return inlier_count;
+}
+//快速内点检索
+int16_t advanced_original_point_filtering(float candidate_angle)
+{
+   
+    int16_t inlier_count = 0; // 内点数量
+    for(int i = 0; i < MAX_STATIC_PEAK_NUM; i++)
+    {
+        if((!point_doppler_filter(cal_peak[i].doppler))||(!point_param_filter(cal_peak[i].angle,cal_peak[i].range)))
+        {
+            continue;
+        }
+        float32_t perdicted_doppler = -KMH_TO_MS(Message_VehicleMsg.Velocity)*cosf(cal_peak[i].angle + DEG_TO_RAD(candidate_angle)); //预测的径向速度
+        float32_t residual = fabsf(cal_peak[i].doppler - perdicted_doppler); //残差
+       // printf("PeakList->term[i].doppler = %f\n",PeakList->term[i].doppler);
        // printf("residual = %f\n",residual);
         if (residual < RANSAC_THRESHOLD)
         {
             inlier_count++;
         }
     }
-   // printf("inlier_count = %d\n",inlier_count);
+      // printf("inlier_count = %d\n",inlier_count);
     return inlier_count;
 }
 
@@ -482,7 +546,9 @@ int16_t RANSAC_calibration(const or_point_cloud_format_t *PeakList)
             if(adapt_params.static_peak_num >= MAX_STATIC_PEAK_NUM)
             {
                 // 角度估计
-                adapt_params.cal_step = ANGLE_ESTIMATION;
+                Precise_angle_estimation_calibration(adapt_params.candidate_yaws);
+                adapt_params.cal_step = CAL_STOP;
+               // adapt_params.cal_step = ANGLE_ESTIMATION;
             }
             adapt_params.best_ca_index = best_candidate_index;
         }
@@ -493,10 +559,62 @@ int16_t RANSAC_calibration(const or_point_cloud_format_t *PeakList)
 }
 
 
+int16_t Precise_angle_estimation_calibration(float32_t  yaw_angle)
+{
+    //or_point_cloud_format_t optimal_frame = {0};
+#define PRECISE_ANGLE_NUM 11
+    float initial_guess = 0.0f;//默认
+    int16_t inlier_count = 0;//内点数量 
+
+    const int num_candidates = PRECISE_ANGLE_NUM;//候选角度数
+    
+    float candidate_yaws[PRECISE_ANGLE_NUM] = {0};
+    for(int i = 0;i < num_candidates;i++)
+    {
+        candidate_yaws[i] = yaw_angle + (i-5)*0.1f;
+    }
+    
+    int best_inlier_count = 0;  //最佳内点数
+    int best_candidate_index = -1; //最佳候选角度索引
+
+    for(int i = 0; i < num_candidates; i++)
+    {
+        float candidate_yaw = candidate_yaws[i];
+
+        int16_t inlier_count = advanced_original_point_filtering(candidate_yaw);
+
+        if((inlier_count > best_inlier_count)&&(inlier_count > MIN_INLIER_COUNT))
+        {
+            best_inlier_count = inlier_count;
+            best_candidate_index = i;
+        }
+    }
+    printf("adapt_params.candidate_yaws = %.3f\n",yaw_angle);
+    if((best_candidate_index > -1))//防止best_candidate_angle数组越界
+    {
+        adapt_params.candidate_yaws = candidate_yaws[best_candidate_index];//契合度最高的预期角度
+        printf("Precise_angle_estimation_calibration_new= F(%.3f)\n",adapt_params.candidate_yaws);
+    }
+
+
+
+
+    // collection_internal_point(&optimal_frame,adapt_params.candidate_yaws);
+    // if(adapt_params.static_peak_num >= MAX_STATIC_PEAK_NUM)
+    // {
+    //     //角度估计
+    //     adapt_params.cal_step = ANGLE_ESTIMATION;
+    // }
+    // adapt_params.best_ca_index = best_candidate_index;
+
+    return adapt_params.best_inlier_count;
+}
+
+
 void adapt_calibration(const or_point_cloud_format_t *PeakList)
 {
 
-    if((fabs(Message_VehicleMsg.SteeringAngle)>3.0f)&&(fabs(Message_VehicleMsg.SteeringAngle)<7.0f)&&(fabsf(Message_VehicleMsg.YawRate)<0.7f)&&(Message_VehicleMsg.Velocity>20.0f)&(Message_VehicleMsg.Velocity<50.0f))
+    if((fabs(Message_VehicleMsg.SteeringAngle)>3.0f)&&(fabs(Message_VehicleMsg.SteeringAngle)<5.0f)&&(fabsf(Message_VehicleMsg.YawRate)<0.7f)&&(Message_VehicleMsg.Velocity>20.0f)&(Message_VehicleMsg.Velocity<50.0f))
     {
             switch (adapt_params.cal_step)
             {
@@ -508,11 +626,11 @@ void adapt_calibration(const or_point_cloud_format_t *PeakList)
                 RANSAC_calibration(PeakList);
                 break;
             case ANGLE_ESTIMATION:
-                gradient_descent_optimization(PeakList);
+                //gradient_descent_optimization(PeakList);
                 break;
 
             case RESULT_VERIFICATION:
-                validate_calibration_result(cal_peak,adapt_params.best_ca_angle);
+                //validate_calibration_result(cal_peak,adapt_params.best_ca_angle);
                 break;    
             
             case CAL_STOP:

@@ -7,6 +7,7 @@
 #define EXIT_FAILURE 1
 
 #define FILE_PATH "C:\\Users\\zhujunnan\\Desktop\\qianpeak\\10_49_07_803\\Peak.csv"
+//install024  installangle2_96
 //"C:\\Users\\zhujunnan\\Desktop\\qianpeak\\install024\\Peak.csv"
 
 void Output_file_clearing(char *output_filename);
