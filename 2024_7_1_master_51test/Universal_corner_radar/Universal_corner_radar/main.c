@@ -1,17 +1,19 @@
-
+//#include "Adaptive.h"
 #include <pthread.h>
 #include "main.h"
 #include <semaphore.h>
+// #include "common_api.h"
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
-
+//extern  Message_VehicleMsgS Message_VehicleMsg;
+//extern  RadarParaS RadarPara;
 CALIBRATION_MODE CAL_MODE = CALIBRATION_INIT;
 const char *Split_symbol = ",";
 #define ang_to_rad  PI/180.0f
 #define Filter_Angle_Output_File_PATH "C:\\Users\\zhujunnan\\Desktop\\MuGITHUB\\2024_7_1_master_51test\\Filter_Angle_output.txt"
 
-/****************************peak_csv_title************/ 
+/****************************peak_csv_title**********/ 
 #define Frame_number 0    //帧ID
 #define Serial_number 1   //序列号
 #define Range  2
@@ -26,7 +28,7 @@ const char *Split_symbol = ",";
 /*************车辆信息************/
 #define LIST_NUM  18//15   //只读取列数前18列
 #define line_NUM  300      //只读取行数
-/****************************peak_csv_title**************/ 
+/****************************peak_csv_title**********/ 
 
 
 
@@ -36,6 +38,7 @@ sem_t semaphore,semaphore1;
  * 描述：文件清空函数，用于在开始新的一轮数据读取前清空输出文件
  * 返回值:NA
  */
+
 void Output_file_clearing(char *output_filename)
 {
     if (truncate(output_filename, 0) == -1) 
@@ -49,6 +52,7 @@ void Output_file_clearing(char *output_filename)
  * 描述：标签写入函数，用于在输出文件中写入标签
  * 返回值:NA
  */
+
 void Tag_write()
 {
     FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
@@ -62,7 +66,6 @@ void Tag_write()
     fflush(output_fp);
     fclose(output_fp);
 }
-
 /* 函数名: Calibration_Screening_Angle()
  * 描述：XD YD标签写入函数，用于在输出文件中写入标签
  * 返回值:NA
@@ -77,6 +80,7 @@ void Calibration_Screening_Angle()
  * 描述 ：YD XD数据写入函数，用于在输出文件中写入标签
  * 返回值:NA
  */
+
 void YD_XD_writing(float YD,float XD)
 {
     FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
@@ -88,31 +92,16 @@ void YD_XD_writing(float YD,float XD)
     fprintf(output_fp,"%f\t%f\n",YD,XD);
     fflush(output_fp);
     fclose(output_fp);
+
 }
-
-
-void ang_dopp_rang_snr_vel(float32_t angle,float32_t doppler,float32_t range,float32_t snr,float32_t vel)
-{   
-    FILE *output_fp = fopen(Filter_Angle_Output_File_PATH,"a+");
-    if (NULL == output_fp)
-    {
-        perror("open_output_file error");
-        return;
-    }
-    fprintf(output_fp,"%f\t%f\t%f\t%f\t%f\n",angle,doppler,range,snr,vel);
-    fflush(output_fp);
-    fclose(output_fp);
-}
-
-
 
 
 void Calibration_Required_data()
 {
     /*********Message_VehicleMsgS********/
-    RadarPara.InstallPosition = INSTALL_FRONT;
-    RadarPara.InstallAngle = 0.0f;
-    memcpy(&RadarPara,&RadarPara,sizeof(RadarPara));
+    Calibration_Message.RadarParaS.InstallPosition = INSTALL_FRONT;//
+    Calibration_Message.RadarParaS.InstallAngle = 0.0f;
+    memcpy(&RadarPara,&Calibration_Message.RadarParaS,sizeof(RadarPara));
 }
 
 void FILE_Read(void)
@@ -169,7 +158,7 @@ void FILE_Read(void)
                     if((list == Range)&&(strcmp(token,"0") == 0))
                     {
                         break;
-                    }else if(list == Serial_number)
+                    }else if (list == Serial_number)
                     {
                         if(atoi(token) != 0)
                         {
@@ -182,9 +171,11 @@ void FILE_Read(void)
                             if(frame_num_temp != atoi(token))
                             {
                                 frame_num_temp = atoi(token);
-                                point_cloud_format.point_count = point_id + 1;
+                                Calibration_Message.or_point_cloud_format_t.point_count = point_id + 1;
                                 point_id = 0;
                                 //speed_temp = 0.0f;
+                                //printf("Release semaphore\n");
+                                //printf("Frame_number:%d\n",frame_num_temp);
                                 sem_post(&semaphore1);
                                 sem_wait(&semaphore);
                             }else{
@@ -192,16 +183,16 @@ void FILE_Read(void)
                             }
                         break;
                         case Range:
-                            point_cloud_format.term[point_id].range = (float)atof(token);
+                            Calibration_Message.or_point_cloud_format_t.term[point_id].range = (float)atof(token);
                         break;
                         case Doppler:
-                            point_cloud_format.term[point_id].doppler = (float)atof(token);
+                            Calibration_Message.or_point_cloud_format_t.term[point_id].doppler = (float)atof(token);
                         break;
                         case Azimuth:
-                            point_cloud_format.term[point_id].azimuth = DEG_TO_RAD(((float)atof(token)));
+                            Calibration_Message.or_point_cloud_format_t.term[point_id].azimuth = ((float)atof(token))*ang_to_rad;
                         break;
                         case Snr:
-                            point_cloud_format.term[point_id].snr = (float)atof(token);
+                            Calibration_Message.or_point_cloud_format_t.term[point_id].snr = (float)atof(token);
                         break;
                         case Vel:
                             Message_VehicleMsg.Velocity = (float)atof(token);  //车速
@@ -235,24 +226,24 @@ void FILE_Read(void)
 void Data_reading_task(void)
 { 
         FILE_Read();
-        
 }
 
 void Calibration_runing_task(void)
 {
-
     while (1)
     {
+        //printf("Calibration_runing\n");
         sem_wait(&semaphore1); //wait for the semaphore
         Calibration_Required_data();
         switch(CAL_MODE)
         {
             case CALIBRATION_INIT:
-               init_calibration();
+                AdaptiveCalStart();
                 CAL_MODE = CALIBRATION_RUNING;
                 break;
             case CALIBRATION_RUNING:
-             adapt_calibration(&point_cloud_format);
+                Adaptive_Calibration(&Calibration_Message.or_point_cloud_format_t);
+               // printf("Calibration_runing\n");
             break;
             default:
                 break;
