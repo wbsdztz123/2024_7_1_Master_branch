@@ -25,11 +25,22 @@
 #define RAD_TO_DEG(rad)                                      ((rad) * 57.2957795f) // 180/PI ≈ 57.2957795
 #define DEG_TO_RAD(deg)                                      ((deg) * 0.0174532925f)
 
-#define EPSILON 1e-9
-#define MAX_ANGLE_DEVIATION 10.0f //角度偏差最大值
-#define MAX_DISTANCE_DEVIATION 0.5f //距离偏差最大值
-#define MAX_ANGLE_DEVIATION_AUTH 15.0f //真实下线角度偏差最大值
-#define MAX_DISTANCE_DEVIATION_AUTH 1.0f //真实下线距离偏差最大值
+#define CALIBRATION_TOLERANCE               5.0f //标定水平容差
+
+#define CALIBRATION_ELEVTOLERANCE           3.0f //标定垂直容差
+
+#define Calibration_elevTolerance_authentic 5.5f //真实下线标定垂直容差
+
+#define OFFLINE_CALIBRATION_H_ANGLE_REAR   RadarInstallAngle
+
+#define OFFLINE_CALIBRATION_V_ANGLE_REAR   0.0f
+
+
+#define EPSILON                                    1e-9
+
+#define UNCALIBRATED                 0x00
+#define CALIBRATION_IS_SUCCESS       0x01
+#define CALIBRATION_IS_FAILED        0x02
 
 typedef enum {
     CALIBRATION_INIT = 0x00,

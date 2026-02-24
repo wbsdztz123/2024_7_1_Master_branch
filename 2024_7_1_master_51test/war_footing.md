@@ -96,7 +96,7 @@ RAM / 主内存 (Random Access Memory / Main Memory)
          在最高特权级运行（x86 Ring 0）
          常驻内存永不停止
     
-总结：内核的四大本质
+'总结：内核的四大本质
 	硬件抽象层
 		将差异化的硬件统一为标准化接口
 	资源管理者
@@ -120,7 +120,7 @@ UEFI是BIOS的继任者，它提供了更强大的功能和更好的性能。UEF
 
 ###### 进程地址空间架构图 
 
-![deepseek_mermaid_20250818_2b6207](assets/deepseek_mermaid_20250818_2b6207-1755511542336-5.png)
+<img src="assets/deepseek_mermaid_20250818_2b6207-1755511542336-5.png" alt="deepseek_mermaid_20250818_2b6207" style="zoom:200%;" />
 
 ```c
 高地址 (0xFFFFFFFF)

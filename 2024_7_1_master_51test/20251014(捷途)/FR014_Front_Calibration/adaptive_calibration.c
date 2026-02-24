@@ -21,9 +21,16 @@ extern double  gModelParamK;
 
 // extern int8_t Out_Put_Vehicle_List(uint8_t i);
 adaptive_calibrationparas CalibrationPara = {0};
-// calib_adapt_format_t      adapt_format ={0};
-// Point                     dataset[MAX_POINTS]; // 存储单帧所有数据点
-int                       total_points = 0;    // 实际数据点数量
+uint8_t Cal_peak_valid_Flag[GTRACK_NUM_POINTS_MAX] = {0};
+
+
+/// @brief 
+/// @param  
+/// @return 
+uint8_t AdaptiveCal_Get_avail_frame_flag(void)
+{
+    return CalibrationPara.avail_frame_flag;
+}
 
 
 uint8_t AdaptiveCalStart(void)
@@ -200,6 +207,8 @@ void Adaptive_CalibrationClear(void)
         {
             CalibrationPara.xdata[i] = 0;
             CalibrationPara.ydata[i] = 0;
+            CalibrationPara.rangdata[i] = 0;
+            CalibrationPara.elevdata[i]  = 0;
         }
         CalibrationPara.Adap_Angle = 0;
         CalibrationPara.Adap_eleAngle = 0;
@@ -212,7 +221,11 @@ void Adaptive_CalibrationClear(void)
 
 void Adaptive_Calibration(const or_point_cloud_format_t *PeakList)
 {
-    printf("peak_point_count:%d\n", PeakList->point_count);
+    /********************for calibration recharge clear parameter*********************/
+     memset(Cal_peak_valid_Flag, 0, sizeof(Cal_peak_valid_Flag));
+     CalibrationPara.avail_frame_flag = 0;
+    /**********************************************************************************/
+
     uint8_t tempProgress;
     
     Adaptive_CalibrationSaveData(PeakList); // 保存数据
@@ -253,7 +266,7 @@ void Adaptive_Calibration(const or_point_cloud_format_t *PeakList)
 void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
 {
     uint8_t  flag;
-    uint8_t  Calibration_flag;
+    volatile uint8_t  Calibration_flag1 = 0;
     uint32_t i;
     uint32_t  Start_num = 0;
     //float32_t tmpCalibrationRange;
@@ -295,42 +308,39 @@ void Adaptive_CalibrationSaveData(const or_point_cloud_format_t *PeakList)
         {
             CalibrationPara.AveYdata = 0;
             rang_flag                = Rang_judge(PeakList); // 判断栅栏距离
-printf("rang_flag:%d\n",rang_flag);
-            float lower_bound, upper_bound;
+
+             float lower_bound, upper_bound;
             switch (rang_flag) {
             case 2:
-                lower_bound = 2.0f;
-                upper_bound = 4.2f;
+                lower_bound = 4.01f;
+                upper_bound = 8.0f;
                 break;
             case 1:
-                lower_bound = 0.5f;
-                upper_bound = 2.2f;
+                lower_bound = 0.0f;
+                upper_bound = 4.01f;
                 break;
             default:
-                lower_bound = 3.9f;
-                upper_bound = 7.0f;
+                lower_bound = 0.0f;
+                upper_bound = 15.0f;
+                Adaptive_CalibrationClear(); // 标定放弃
                 break;
             }
 
             for (i = 0; i < PeakList->point_count; i++) // 读取车辆旁边障碍物的位置，存储数据
             {
-                Calibration_flag = CAL_Target_Filtering(PeakList, i);
+                Calibration_flag1 = CAL_Target_Filtering(PeakList, i);
 
-                if (Calibration_flag && rang_flag) {
+                if (Calibration_flag1 && rang_flag) {
+
                     float azimuth = PeakList->term[i].azimuth * 180 / PI;
-                    if(INSTALL_DIRECTION)
-                    {
-                        temp_Ydata    = PeakList->term[i].range * sin((RadarPara.InstallAngle - azimuth) * PI / 180);
-                    }else
-                    {
-                        temp_Ydata    = PeakList->term[i].range * sin((RadarPara.InstallAngle + azimuth) * PI / 180);
-                    }
-                    
+                    temp_Ydata    = PeakList->term[i].range * sin((0 + azimuth) * PI / 180);
 
-                    if (temp_Ydata > lower_bound && temp_Ydata < upper_bound)
+                    if (temp_Ydata > lower_bound && temp_Ydata < upper_bound) 
                     {
                         Start_num++;
                         CalibrationPara.AveYdata += temp_Ydata;
+
+                        Cal_peak_valid_Flag[i] = 1;//有效
                     }
                 }
             }
@@ -341,6 +351,7 @@ printf("rang_flag:%d\n",rang_flag);
             Calibration_Progress(tempProgress);
 
             if (Start_num >= CALIBRATION_MIN_SAMPLES) {
+                CalibrationPara.avail_frame_flag = 1;//本帧有效
                 CalibrationPara.AveYdata = CalibrationPara.AveYdata / Start_num;
                 if ((CalibrationPara.AveYdata > 0.5f) && (CalibrationPara.AveYdata < 7.0f)) //3.0-4.0-4.5-5.0-6.0-8.0
                 {
@@ -413,42 +424,74 @@ printf("rang_flag:%d\n",rang_flag);
             if ((fabs(Message_VehicleMsg.SteeringAngle - CalibrationPara.SteeringAngle) < 3.0f) //5//6//10// 方向盘转角偏差小于10才行。
                 && (fabs((KMH_TO_MS(Message_VehicleMsg.Velocity)) - CalibrationPara.Velocity) < 3.0f)) // 3
             {
-                float X = 0.0f;
-                float Y = 0.0f;
                 Start_num = 0;
+                //printf("Calibration_flag0000000000000 = %d\n",Calibration_flag1);
                 for (i = 0; i < PeakList->point_count; i++) {
-                    Calibration_flag = CAL_Target_Filtering(PeakList, i);
 
-                    if (Calibration_flag) {
+                    Calibration_flag1  = 0;
+                    //printf("Calibration_flag111111111111111 = %d\n",Calibration_flag1);
+
+                    Calibration_flag1 = CAL_Target_Filtering(PeakList, i);
+
+                   // printf("Calibration_flag222222222222222[%d] = %d\n", i, Calibration_flag1);
+
+                    if((Calibration_flag1)&&(PeakList->term[i].range > 65.0f))
+                    {
+                            printf("PeakList->term[%d].range33333333333333333 = %f\n", i, PeakList->term[i].range);
+                            printf("Calibration_flag44444444444444444 = %d\n",Calibration_flag1);
+                            printf("\n");
+                    }
+
+
+                    if (Calibration_flag1) 
+                    {
+                        //printf("PeakList->term[%d].range = %f\n", i, PeakList->term[i].range);
                         float azimuth_deg = PeakList->term[i].azimuth * 180 / PI;
-                        if(INSTALL_DIRECTION)
+                        float X = PeakList->term[i].range * cos((0 + azimuth_deg) * PI / 180);
+                        float Y = PeakList->term[i].range * sin((0 + azimuth_deg) * PI / 180);
+                        float ele = PeakList->term[i].elevation * (180 / PI);
+                        float Radial_distance = PeakList->term[i].range;
+                        if (CalibrationPara.AveYdata < 2.2f)
                         {
-                            X = PeakList->term[i].range * cos((RadarPara.InstallAngle - azimuth_deg) * PI / 180);
-                            Y = PeakList->term[i].range * sin((RadarPara.InstallAngle - azimuth_deg) * PI / 180);
-                        }else
-                        {
-                            X = PeakList->term[i].range * cos((RadarPara.InstallAngle + azimuth_deg) * PI / 180);
-                            Y = PeakList->term[i].range * sin((RadarPara.InstallAngle + azimuth_deg) * PI / 180);
-                        }
-
-
-                        if (CalibrationPara.AveYdata < 2.2f) {
                             if (CalibrationPara.DataNum < SINGLE_DATA_AMOUNT
                                 && Y > (CalibrationPara.AveYdata - (Calibration_Ydata_gap - 0.2))
                                 && Y < (CalibrationPara.AveYdata + (Calibration_Ydata_gap - 0.2)) && X > 8.0f) {
                                 CalibrationPara.xdata[CalibrationPara.DataNum] = X;
                                 CalibrationPara.ydata[CalibrationPara.DataNum] = Y;
+                                CalibrationPara.elevdata[CalibrationPara.DataNum] = ele;
+                                CalibrationPara.rangdata[CalibrationPara.DataNum] = Radial_distance;
                                 CalibrationPara.DataNum++;
                                 Start_num++;
+                                Cal_peak_valid_Flag[i] = 1;//有效
+                                //printf("i = %d\n",i);
+
+                                // if(Radial_distance > 65.0f)
+                                // {
+                                //     printf("Radial_distance[%d] = %f\n", i, Radial_distance);
+                                //     printf("Cal_peak_valid_Flag[%d]1111111 = %d\n", i, Cal_peak_valid_Flag[i]);
+                                // }
                             }
-                        } else {
+                        }
+                        else
+                        {
                             if (CalibrationPara.DataNum < SINGLE_DATA_AMOUNT
                                 && Y > (CalibrationPara.AveYdata - Calibration_Ydata_gap)
-                                && Y < (CalibrationPara.AveYdata + Calibration_Ydata_gap) && X > 8.0f) {
+                                && Y < (CalibrationPara.AveYdata + Calibration_Ydata_gap) && X > 8.0f) 
+                            {
                                 CalibrationPara.xdata[CalibrationPara.DataNum] = X;
                                 CalibrationPara.ydata[CalibrationPara.DataNum] = Y;
+                                CalibrationPara.elevdata[CalibrationPara.DataNum]  = ele;
+                                CalibrationPara.rangdata[CalibrationPara.DataNum] = Radial_distance;
                                 CalibrationPara.DataNum++;
                                 Start_num++;
+                                Cal_peak_valid_Flag[i] = 1;//有效
+                                //printf("i = %d\n",i);
+                                // if(Radial_distance > 65.0f)
+                                // {
+                                //     printf("Radial_distance[%d] = %f\n", i, Radial_distance);
+                                //     printf("Cal_peak_valid_Flag[%d]222222222 = %d\n", i, Cal_peak_valid_Flag[i]);
+                                // }
+                                
                             }
                         }
                     }
@@ -479,6 +522,7 @@ printf("rang_flag:%d\n",rang_flag);
 
 #endif
                 } else {
+                    CalibrationPara.avail_frame_flag = 1;//本帧有效
                     CalibrationPara.FalseFrame = 0;
 #ifdef _CALIBRATION_DEBUG_
 
@@ -584,6 +628,21 @@ void Adaptive_CalibrationPolyFit(void)
     CalibrationPara.Adap_B     = b;
     CalibrationPara.Adap_A     = a;
     CalibrationPara.Adap_Angle = atan(a) * 180 / PI;
+//垂直
+    float32_t sum_ele =0;
+    int16_t count = 0;
+    for (int j = 0; j < CalibrationPara.DataNum; j++) {
+        if (CalibrationPara.rangdata[j] >= 50 && CalibrationPara.rangdata[j] <= 60) {
+            sum_ele += CalibrationPara.elevdata[j];
+            count++;
+        }
+    }
+    if (count != 0)
+    {
+        float32_t averagePitch        = sum_ele / count;
+        CalibrationPara.Adap_eleAngle = averagePitch;
+    }
+
 
 #ifdef _CALIBRATION_DEBUG_
 
@@ -741,52 +800,38 @@ uint8_t Rang_judge(const or_point_cloud_format_t *PeakList)
 {
     #define TARGET_MIN_RANGE 5.0f
     #define TARGET_MAX_RANGE 25.0f
-    float32_t temp_Ydata = 0.0f;
     uint32_t i = 0;
     uint8_t result = 0;
-    uint16_t rang0_2 = 0, rang2_4 = 0, rang4_7 = 0;
+    uint16_t rang0_4 = 0, rang4_8 = 0, rang8_ = 0;
     float32_t azimuth_deg = 0.0f;
+
     for (i = 0; i < PeakList->point_count; i++)
     {
         azimuth_deg = RAD_TO_DEG(PeakList->term[i].azimuth);
 
         result = CAL_Target_Filtering(PeakList, i); 
-        printf("result=%d\n",result);
+        //float temp_X = PeakList->term[i].range * cos((0 + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
         if((PeakList->term[i].range > TARGET_MIN_RANGE) && (PeakList->term[i].range < TARGET_MAX_RANGE))
         {
-        if (result)
-        {   
-            if(INSTALL_DIRECTION)
+            if ((result))
             {
-                temp_Ydata = PeakList->term[i].range * sin((RadarPara.InstallAngle - (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
-            }else
-            {printf("111111111111\n");
-                temp_Ydata = PeakList->term[i].range * sin((RadarPara.InstallAngle + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
-            }
-            
-            if (temp_Ydata < 2.01f) {
-                rang0_2++;
-            } else if (temp_Ydata < 4.01f) {
-                rang2_4++;
-            } else {
-                rang4_7++;
+                float32_t temp_Ydata = PeakList->term[i].range * sin(DEG_TO_RAD((0 + azimuth_deg)));
+                if (temp_Ydata > 0 && temp_Ydata < 4.01f) {
+                    rang0_4++;
+                } else if (temp_Ydata > 4.01f && temp_Ydata < 8.01f) {
+                    rang4_8++;
+                } 
             }
         }
     }
-    }
-    if (rang0_2 > rang2_4 && rang0_2 > rang4_7)
-    {
-        return 1;
-    }
-    else if (rang2_4 > rang0_2 && rang2_4 > rang4_7)
-    {
-        return 2;
-    }
-    else if (rang4_7 > rang2_4 && rang4_7 > rang0_2)
-    {
-        return 3;
-    }
-    
+        if (rang0_4 > rang4_8)
+        {
+            return 1;
+        }
+        else
+        {
+            return 2;
+        }
     return 0;
 }
 
@@ -877,42 +922,34 @@ void Calibration_Progress(uint8_t pace)
 // }
 
 
-uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint8_t i)
+uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint16_t i)
 {
-    uint8_t Calibration_flag = 0;
+    volatile uint8_t Calibration_flag = 0;
     float32_t temp_speed_gap = 0xff;
-    float32_t cosValue = 0.0f;
-
+    
     if (PeakList->term[i].range > CalibrationRangeMin 
         && PeakList->term[i].range < CalibrationRangeMax
         && (PeakList->term[i].azimuth * 180 / PI) > ADAPTIVE_MIN_AZIMUTH
         && (PeakList->term[i].azimuth * 180 / PI) < ADAPTIVE_MAX_AZIMUTH
         && PeakList->term[i].snr >= Calibration_MinRCs)
     {
-        bool isLeftOrRightFront = (RadarPara.InstallPosition == INSTALL_LEFT_FRONT || RadarPara.InstallPosition == INSTALL_RIGHT_FRONT);
+        //bool isLeftOrRightFront = (RadarPara.InstallPosition == INSTALL_LEFT_FRONT || RadarPara.InstallPosition == INSTALL_RIGHT_FRONT);
+        bool isLeftOrRightFront = (RadarPara.InstallPosition == INSTALL_FRONT);
         bool isDopplerNegative = PeakList->term[i].doppler < 0.0f;
 
         if ((isLeftOrRightFront && isDopplerNegative) || (!isLeftOrRightFront && !isDopplerNegative))
         {
-            if(INSTALL_DIRECTION)
-            {
-                printf("333333333333\n");
-                cosValue = cos((RadarPara.InstallAngle - (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
-            }else{
-                printf("22222222222\n");
-                cosValue = cos((RadarPara.InstallAngle + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
-            }
-            
-            float32_t speed = Message_VehicleMsg.Velocity / 3.6f;
+            float32_t cosValue = cos((0 + (PeakList->term[i].azimuth * 180 / PI)) * PI / 180);
+            float32_t speed = KMH_TO_MS(Message_VehicleMsg.Velocity);
             float32_t threshold = 0.15f;
 
             if (speed >= 4.1f && speed < 8.3f)
             {
-                threshold = 0.1f;
+                threshold = 0.15f;//0.12//0.13
             }
-            else if (speed >= 8.3f)
+            else if (speed >= 8.3f)//0.1//.12
             {
-                threshold = 0.08f;
+                threshold = 0.15f;
             }
 
             if (isLeftOrRightFront)
@@ -922,20 +959,33 @@ uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint8_t i)
             else
             {
                 temp_speed_gap = fabs(PeakList->term[i].doppler / cosValue - speed);
-                printf("temp_speed_gap=%f\n",temp_speed_gap);
             }
 
             Calibration_flag = (temp_speed_gap < speed * threshold);
-            printf("temp_speed_gap=%f,speed=%f,threshold=%f,Calibration_flag=%d\n",temp_speed_gap,speed,threshold,Calibration_flag);
         }
     }
-
+    printf("i = %d\n",i);
+    
     return Calibration_flag;
-    // =============== 输入有效性验证 ===============
-    // if (!term) {// || i >= point_count
-    //     //LOG_ERROR("Invalid input: PeakList=%p, index=%u", PeakList, i);
-    //     return 0;
-    // }
+}
+
+// void Pitch_angle_deviation_detection(const or_point_cloud_format_t *PeakList)
+// {
+//     uint32_t i;
+//     if (PeakList->point_count >= GTRACK_NUM_POINTS_MAX) {
+//         return;
+//     }
+//     if (CalibrationPara.pitch_angle_num >= 1000) {
+//         {
+//             if ((CalibrationPara.pitch_angle_cnt / CalibrationPara.pitch_angle_num) > 0.8f) {
+//                 CalibrationPara.No_pitch_deviation_cnt++;
+//             }else{
+//                 CalibrationPara.Large_pitch_deviation_cnt++;
+//             }
+//             CalibrationPara.pitch_angle_cnt = 0;
+//             CalibrationPara.pitch_angle_num = 0;
+//         }
+//     }
 
     // // =============== 基础几何条件筛选 ===============
     // /* 计算方位角度并验证范围 */
@@ -990,7 +1040,8 @@ uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList, uint8_t i)
     //            //is_speed_valid;
     // return is_speed_valid ? 1 : 0;
 
-}
+//     return ;
+// }
 
 /******************************END OF FILE*************************************/
 

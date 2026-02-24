@@ -23,17 +23,15 @@
 #define CalibrationRangeMin   8.0f//15//20//15//3//3    最小标定距离
 #define CalibrationRangeMid   30.0f     
 #define CalibrationRangeMax   65.0f//60.0f//40.0f//50.0f//40.0f//50//40//50//45//50//25//35//12//35       //最大标定距离35
-
-#define ADAPTIVE_MAX_AZIMUTH  10.0f
-#define ADAPTIVE_MIN_AZIMUTH  -55.0f
-
+#define ADAPTIVE_MAX_AZIMUTH  55.0f
+#define ADAPTIVE_MIN_AZIMUTH  0.0f
 #define Calibration_MinRCs              15.0f//5//30//30//40//45//30
 #define Calibration_Ydata_gap                2.0f //1.5f//2.0f//1.0f//0.7f//1.0f//0.7f//1.0f//0.5f//1.0f
 /***************选点参数*******************/
 
 
 /***********车身姿态参数************************ */
-#define Calibration_MaxSteeringAngle    8.0f//10.0f//5.0f//10//20   
+#define Calibration_MaxSteeringAngle    10.0f//5.0f//10//20   
 #define Calibration_MaxYawRate          0.8f
 #define Calibration_MinVelocity         4.0f
 #define Calibration_MaxVelocity         19.5f
@@ -108,6 +106,7 @@ typedef struct adaptive_calibrationpara //标定
     calibration_adaptive_error_kind_t           errType;
 
     //ADAPTIVE_WORKMODE adaptive_Workmode; //实时进度
+    uint8_t           avail_frame_flag;  
 
 } adaptive_calibrationparas;
 typedef enum
@@ -134,7 +133,7 @@ void AdaptiveCalClockLaunch(uint64_t period);
 int32_t Private_Can_CalibrtionDebug(uint32_t ID,uint8_t* Data,uint8_t lenth);
 void Calibration_Progress(uint8_t pace);
 uint8_t Body_Posture_Detection(void);
-uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList,uint8_t i);
+uint8_t CAL_Target_Filtering(const or_point_cloud_format_t *PeakList,uint16_t i);
 //void SaveAdaptiveCalStatus_DID_0x4902(uint8_t * StatusArray);
 void angle_deviation_detection(const or_point_cloud_format_t *PeakList);
 
