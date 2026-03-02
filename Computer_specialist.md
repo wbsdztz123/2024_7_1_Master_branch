@@ -1170,7 +1170,7 @@ ICMP：互联网控制报文协议，用于差错报告和网络诊断。
 
 ```c
 DBS（数据库系统） = DB（数据库） + DBMS（数据库管理系统） + 硬件 + 人员。它是一个完整的、运转起来的系统。
-1.数据库ji语句
+1.数据库基础语句
     1.1. 数据查询语言（DQL）
         SELECT：用于从数据库中检索数据，是最常用的查询命令。
 
@@ -1187,5 +1187,30 @@ DBS（数据库系统） = DB（数据库） + DBMS（数据库管理系统） +
         DROP TABLE：删除整个表及其数据。
         CREATE INDEX：为表创建索引，提高查询效率。
         DROP INDEX：删除索引。
+	1.4 DESCRIBE Websites; 查看某个表的结构（字段名、类型、约束等）
+    1.5 SELECT * FROM Websites; 查询所有数据： * 通配符，代表“所有列”
+    1.6 SHOW DATABASES; 查看已有的数据库
+    1.7 USE test; 使用已有数据库：如果你看到了一个合适的数据库（比如 test），可以用 USE 命令选中它：
+    1.8 SHOW TABLES; 查看某个数据库中已存在的表
+2.
+-- 1. 创建新数据库（如果不存在）
+CREATE DATABASE IF NOT EXISTS mywebsite;
+-- 2. 切换到该数据库
+USE mywebsite;
+-- 3. 创建表
+CREATE TABLE Websites (
+    id INT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    url VARCHAR(255) NOT NULL,
+    alexa INT,
+    country VARCHAR(50)
+);        
+-- 4.数据插入
+    INSERT INTO Websites (id, name, url, alexa, country) VALUES
+    (1, 'Google', 'https://www.google.cm/', 1, 'USA'),
+    (2, '淘宝', 'https://www.taobao.com/', 13, 'CN'),
+    (3, '菜鸟教程', 'http://www.runoob.com/', 4689, 'CN'),
+    (4, '微博', 'http://weibo.com/', 20, 'CN'),
+    (5, 'Facebook', 'https://www.facebook.com/', 3, 'USA');
 ```
 
