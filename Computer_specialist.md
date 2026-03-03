@@ -1173,12 +1173,43 @@ DBS（数据库系统） = DB（数据库） + DBMS（数据库管理系统） +
 1.数据库基础语句
     1.1. 数据查询语言（DQL）
         SELECT：用于从数据库中检索数据，是最常用的查询命令。
+        SELECT DISTINCT：用于返回唯一不同的值。（相同的被过滤掉）
+    		eg：select distinct country form websites;
+	    WHERE：子句用于提取那些满足指定条件的记录。
+    		eg：select * from websites where country='CN';
+        AND & OR 用于基于一个以上的条件对记录进行过滤
+        	 eg：select * from websites where country='CN' （or/and） alexa >= 20;
+             eg：select * from websites where alexa > 2 and (country = 'CN' or country = 'USA');
+        ORDER BY 关键字用于对结果集按照一个列或者多个列进行排序。
+                 关键字默认按照升序对记录进行排序。如果需要按照降序对记录进行排序，可以使用 DESC 关键字。 (ASC升序|DESC降序)   
+             eg：select * from websites order by alexa;降序
+             eg：select * from websites order by alexa desc;升序
+             eg：select * from websites order by alexa desc,country; 对alexa进行降序排序，couny进行升序排序。 若
+        ORDER BY 子句按照列出的列顺序依次排序：
+        第一个查询：先按 alexa 排序，当 alexa 相同时，再按 country 排序。
+        第二个查询：先按 country 排序，当 country 相同时，再按 alexa 排序。
+        当第一个查询不同时，第二个查询不会被用到。
+
 
     1.2. 数据操作语言（DML）
         INSERT INTO：向表中插入新数据。
-        UPDATE：更新表中已存在的数据。
-        DELETE：删除表中的数据。
+        第一种形式无需指定要插入数据的列名，只需提供被插入的值即可：
+            eg：INSERT INTO table_name VALUES (value1,value2,value3,...);
+            eg：insert into websites values (null,'ali','ali.com',7,'cn');   第一行为id自增
+        第二种形式需要指定列名及被插入的值。
+            eg：INSERT INTO table_name (column1,column2,column3,...) VALUES (value1,value2,value3,...);
+            eg：insert into websites (name, url, alexa, country) values ('百度','https://www.baidu.com/','4','CN');
 
+
+        UPDATE：更新表中已存在的数据。
+            eg:UPDATE table_name SET column1 = value1, column2 = value2, ... WHERE condition;
+            eg：update websites set url = 'baidu.com' , country = 'usa' where name = '百度';
+            注意'如果没有where条件，则会更新所有行。'
+
+        DELETE：删除表中的数据。
+            eg:DELETE FROM table_name WHERE condition;
+            DELETE FROM 表名 WHERE 条件;
+            
     1.3. 数据定义语言（DDL）
         CREATE DATABASE：创建新的数据库。
         ALTER DATABASE：修改数据库的属性（如字符集、排序规则等）。
@@ -1192,25 +1223,26 @@ DBS（数据库系统） = DB（数据库） + DBMS（数据库管理系统） +
     1.6 SHOW DATABASES; 查看已有的数据库
     1.7 USE test; 使用已有数据库：如果你看到了一个合适的数据库（比如 test），可以用 USE 命令选中它：
     1.8 SHOW TABLES; 查看某个数据库中已存在的表
+
 2.
--- 1. 创建新数据库（如果不存在）
-CREATE DATABASE IF NOT EXISTS mywebsite;
--- 2. 切换到该数据库
-USE mywebsite;
--- 3. 创建表
-CREATE TABLE Websites (
-    id INT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    url VARCHAR(255) NOT NULL,
-    alexa INT,
-    country VARCHAR(50)
-);        
--- 4.数据插入
-    INSERT INTO Websites (id, name, url, alexa, country) VALUES
-    (1, 'Google', 'https://www.google.cm/', 1, 'USA'),
-    (2, '淘宝', 'https://www.taobao.com/', 13, 'CN'),
-    (3, '菜鸟教程', 'http://www.runoob.com/', 4689, 'CN'),
-    (4, '微博', 'http://weibo.com/', 20, 'CN'),
-    (5, 'Facebook', 'https://www.facebook.com/', 3, 'USA');
+    -- 2.1. 创建新数据库（如果不存在）
+    CREATE DATABASE IF NOT EXISTS mywebsite;
+    -- 2.2. 切换到该数据库
+    USE mywebsite;
+    -- 2.3. 创建表
+    CREATE TABLE Websites (
+        id INT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        url VARCHAR(255) NOT NULL,
+        alexa INT,
+        country VARCHAR(50)
+    );        
+    -- 2.4.数据插入
+        INSERT INTO Websites (id, name, url, alexa, country) VALUES
+        (1, 'Google', 'https://www.google.cm/', 1, 'USA'),
+        (2, '淘宝', 'https://www.taobao.com/', 13, 'CN'),
+        (3, '菜鸟教程', 'http://www.runoob.com/', 4689, 'CN'),
+        (4, '微博', 'http://weibo.com/', 20, 'CN'),
+        (5, 'Facebook', 'https://www.facebook.com/', 3, 'USA');
 ```
 
