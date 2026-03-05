@@ -1209,7 +1209,7 @@ DBS（数据库系统） = DB（数据库） + DBMS（数据库管理系统） +
         DELETE：删除表中的数据。
             eg:DELETE FROM table_name WHERE condition;
             DELETE FROM 表名 WHERE 条件;
-            
+
     1.3. 数据定义语言（DDL）
         CREATE DATABASE：创建新的数据库。
         ALTER DATABASE：修改数据库的属性（如字符集、排序规则等）。
@@ -1237,6 +1237,21 @@ DBS（数据库系统） = DB（数据库） + DBMS（数据库管理系统） +
         alexa INT,
         country VARCHAR(50)
     );        
+
+
+        CREATE TABLE Student (
+        Sno   VARCHAR(20) PRIMARY KEY,  -- 学号，设为主键，确保唯一性
+        Sname VARCHAR(50) NOT NULL,      -- 姓名，不允许为空
+        Sage  INT,                        -- 年龄，整数类型
+        Ssex  CHAR(2),                     -- 性别，可存储 '男'/'女' 等
+        Sdept VARCHAR(50)                  -- 所在系
+    );
+    /*  Sno（学号）：使用 VARCHAR(20) 可以容纳字母数字组合的学号（如 “2021001”），并设为主键，保证每个学生有唯一标识。
+        Sname（姓名）：VARCHAR(50) 足以存储常见长度的姓名，并添加 NOT NULL 约束，防止姓名缺失。
+        Sage（年龄）：用 INT 存储整数年龄，也可根据实际范围使用 TINYINT（0-255）。
+        Ssex（性别）：CHAR(2) 可存储 “男”、“女” 或 “未知” 等两个字符的字符串。
+        Sdept（所在系）：VARCHAR(50) 存储系名，长度可调整。*/
+
     -- 2.4.数据插入
         INSERT INTO Websites (id, name, url, alexa, country) VALUES
         (1, 'Google', 'https://www.google.cm/', 1, 'USA'),
